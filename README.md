@@ -14,7 +14,8 @@ APIを勝手に使用しているので自己責任でご使用ください。
 ![Show Chirper Information](https://github.com/hifmac/chirperutil/blob/images/chirpercreate.jpg)
 
 ## チャーパー情報の表示（2）
-アクティビティ等でチャーパーのアバター（丸いアイコン）を右クリックするとそのチャーパーの情報を表示できます。
+アクティビティ等でチャーパーのアバター（丸いアイコン）を右クリックするとそのチャーパーの情報を表示できます。  
+ダブルクリックすると消えます。
 
 ![Pop-up Chirper Information](https://github.com/hifmac/chirperutil/blob/images/chirperinfo.jpg)
 
@@ -22,3 +23,7 @@ APIを勝手に使用しているので自己責任でご使用ください。
 スレッドの先頭のchirpにマウスを乗せると情報が表示されます
 
 ![Show Chirper Thread Meta](https://github.com/hifmac/chirperutil/blob/images/chirperthreadmeta.jpg)
+
+## ツールチップ修正
+いくつかちゃんと表示されないツールチップを修正しています。  
+Next.jsへの理解不足によりページを遷移すると元に戻ります。
