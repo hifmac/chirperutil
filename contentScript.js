@@ -34,28 +34,53 @@
  */
 function chirper2Tuple(chirper) {
     return [
-      [ "@ID", chirper.username ],
-      [ "名前", chirper.name ],
-      [ "半生", chirper.bio ],
-      [ "バックストーリー", chirper.bio ],
-      [ "Want", chirper.story.want ],
-      [ "Need", chirper.story.need ],
-      [ "年齢", chirper.age ],
-      [ "性別", chirper.gender ],
-      [ "種族", chirper.spec.species ],
-      [ "人種", chirper.race ],
-      [ "居場所", chirper.spec.location ],
-      [ "意志", chirper.spec.intention ],
-      [ "要約", chirper.spec.summary ],
-      [ "プロンプト", chirper.spec.prompt ],
-      [ "設定", chirper.spec.setting ],
-      [ "投稿例", chirper.spec.posts ],
-      [ "返信例", chirper.spec.responses ],
-      [ "チャープ数", chirper.chirps ],
-      [ "顔", chirper.spec.face ],
-      [ "髪", chirper.spec.hair ],
-      [ "体", chirper.spec.body ],
-      [ "スタイル", chirper.spec.style ],
+        [ "@ID", chirper.username ],
+        [ "名前", chirper.name ],
+        [ "半生", chirper.bio ],
+        [ "バックストーリー", chirper.bio ],
+        [ "Want", chirper.story.want ],
+        [ "Need", chirper.story.need ],
+        [ "年齢", chirper.age ],
+        [ "性別", chirper.gender ],
+        [ "種族", chirper.spec.species ],
+        [ "人種", chirper.race ],
+        [ "居場所", chirper.spec.location ],
+        [ "意志", chirper.spec.intention ],
+        [ "要約", chirper.spec.summary ],
+        [ "プロンプト", chirper.spec.prompt ],
+        [ "設定", chirper.spec.setting ],
+        [ "投稿例", chirper.spec.posts ],
+        [ "返信例", chirper.spec.responses ],
+        [ "チャープ数", chirper.chirps ],
+        [ "顔", chirper.spec.face ],
+        [ "髪", chirper.spec.hair ],
+        [ "体", chirper.spec.body ],
+        [ "スタイル", chirper.spec.style ],
+    ];
+}
+
+/**
+ * create world type dict to tuple
+ * @param {Object<string, Object<string, string> | string | string[]>} world 
+ * @returns {Object<string, string | string[]>}
+ */
+function world2Tuple(world) {
+    return [
+        [ "@ID", world.slug ],
+        [ "名前", world.name ],
+        [ "カテゴリ", (world.categories || []).map((x) => x.name) ],
+        [ "説明", world.description ],
+        [ "言語", world.lang ],
+        [ "概要", world.short ],
+        [ "バックストーリー", world.backstory ],
+        [ "プロンプト", world.spec.prompt ],
+        [ "年代", world.spec.year ],
+        [ "スタイル", world.spec.style ],
+        [ "概要", world.spec.summary ],
+        [ "統治", world.spec.governance ],
+        [ "ネガティブ", world.spec.negative ],
+        [ "Want", world.story.want ],
+        [ "Need", world.story.need ],
     ];
 }
 
@@ -255,6 +280,77 @@ const hookChirperViewer = (() => {
     let presentation = null;
     let timerId = null;
 
+    /**
+     * get buttons for saving something
+     * @param {HTMLElement} rootElement 
+     * @returns {HTMLButtonElement[]} buttons for save
+     */
+    function findButtons(rootElement) {
+        const allowedTypes = [
+            "Save",
+            "保存",
+            "Start",
+            "スタート",
+            "Stop",
+            "ストップ"
+        ];
+        return Array.from(rootElement.getElementsByTagName("button")).filter((node) => {
+            for (let child = node.firstChild; child; child = child.nextSibling) {
+                if (child.nodeType === Node.TEXT_NODE && allowedTypes.includes(child.textContent)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    /**
+     * watch API result
+     * @param {string} urlPrefix 
+     * @param {HTMLInputElement} inputId 
+     * @param {HTMLButtonElement[]} buttons 
+     * @param {function(any): void} callback
+     */
+    function watchApi(urlPrefix, inputId, buttons, callback) {
+        let previousResult = "";
+
+        /**
+         * API監視関数
+         * @returns {void}
+         */
+        const callApi = () => {
+            clearTimeout(timerId);
+
+            const apiId = (inputId.value || "").trim();
+            if (apiId.length == 0) {
+                timerId = setTimeout(callApi, 10000);
+                return ;
+            }
+    
+            const apiUrl = urlPrefix + apiId;
+            requestApi(apiUrl).then((response) => {
+                const resultString = JSON.stringify(response.result);
+
+                if (previousResult !== resultString) {
+                    previousResult = resultString;
+                    console.log(response.result);
+                    callback(response.result);
+                }
+
+                if (response.result.progress < 100) {
+                    timerId = setTimeout(callApi, 3000);
+                }
+            }).catch(console.error);
+        };
+
+        // ボタン監視
+        for (const b of buttons) {
+            b.addEventListener("click", callApi);
+        }
+
+        callApi();
+    }
+
 
     return function chirperViewer() {
         // DOMから切り離されていたら狩猟する
@@ -265,7 +361,7 @@ const hookChirperViewer = (() => {
                 paramWindow.parentNode.removeChild(paramWindow);
             }
 
-            clearInterval(timerId);
+            clearTimeout(timerId);
             timerId = null;
         }
 
@@ -286,31 +382,29 @@ const hookChirperViewer = (() => {
             return ;
         }
 
+        const buttons = findButtons(presentation);
+
         const username = document.getElementById("username");
-        if (username === null) {
-            return;
+        if (username) {
+            document.body.appendChild(paramWindow);            
+
+            watchApi("https://api.chirper.ai/v1/chirper/", username, buttons, (result) => {
+                createChirperPanel(paramWindow, chirper2Tuple(result));
+            })
+
+            return ;
         }
 
-        document.body.appendChild(paramWindow);
+        const slug = document.getElementById("slug");
+        if (slug) {
+            document.body.appendChild(paramWindow);
 
-        let previousResult = "";
-        timerId = setInterval(() => {
-            if (!username.value || username.value.trim().length == 0) {
-                return ;
-            }
+            watchApi("https://api.chirper.ai/v1/world/", slug, buttons, (result) => {
+                createChirperPanel(paramWindow, world2Tuple(result));
+            })
 
-            const apiUrl = `https://api.chirper.ai/v1/chirper/${username.value}`;
-            requestApi(apiUrl).then((response) => {
-                const resultString = JSON.stringify(response.result);
-                if (previousResult === resultString) {
-                    return ;
-                }
-                previousResult = resultString;
-
-                createChirperPanel(paramWindow, chirper2Tuple(response.result));
-            }).catch(console.error);
-        }, 10000);
-
+            return ;
+        }
     }
 })();
 
