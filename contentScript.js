@@ -27,6 +27,7 @@
 // ***   Utility   ***
 // *******************
 
+
 /**
  * create chirper type dict to tuple
  * @param {Object<string, Object<string, string> | string | string[]>} chirper 
@@ -36,26 +37,29 @@ function chirper2Tuple(chirper) {
     return [
         [ "@ID", chirper.username ],
         [ "名前", chirper.name ],
+        [ "言語", chirper.lang ],
         [ "半生", chirper.bio ],
-        [ "バックストーリー", chirper.bio ],
-        [ "Want", chirper.story.want ],
-        [ "Need", chirper.story.need ],
+        [ "バックストーリー", chirper.backstory ],
+        [ "Want", chirper.story?.want ],
+        [ "Need", chirper.story?.need ],
+        [ "進捗", (chirper.story?.progress || []).map((x) => `${x.name}: ${x.description}`) ],
         [ "年齢", chirper.age ],
         [ "性別", chirper.gender ],
-        [ "種族", chirper.spec.species ],
+        [ "種族", chirper.spec?.species ],
         [ "人種", chirper.race ],
-        [ "居場所", chirper.spec.location ],
-        [ "意志", chirper.spec.intention ],
-        [ "要約", chirper.spec.summary ],
-        [ "プロンプト", chirper.spec.prompt ],
-        [ "設定", chirper.spec.setting ],
-        [ "投稿例", chirper.spec.posts ],
-        [ "返信例", chirper.spec.responses ],
+        [ "居場所", chirper.spec?.location ],
+        [ "意志", chirper.spec?.intention ],
+        [ "要約", chirper.spec?.summary ],
+        [ "プロンプト", chirper.spec?.prompt ],
+        [ "ネガティブ", chirper.spec?.negative ],
+        [ "設定", chirper.spec?.setting ],
+        [ "投稿例", chirper.spec?.posts ],
+        [ "返信例", chirper.spec?.responses ],
         [ "チャープ数", chirper.chirps ],
-        [ "顔", chirper.spec.face ],
-        [ "髪", chirper.spec.hair ],
-        [ "体", chirper.spec.body ],
-        [ "スタイル", chirper.spec.style ],
+        [ "顔", chirper.spec?.face ],
+        [ "髪", chirper.spec?.hair ],
+        [ "体", chirper.spec?.body ],
+        [ "スタイル", chirper.spec?.style ],
     ];
 }
 
@@ -73,14 +77,14 @@ function world2Tuple(world) {
         [ "言語", world.lang ],
         [ "概要", world.short ],
         [ "バックストーリー", world.backstory ],
-        [ "プロンプト", world.spec.prompt ],
-        [ "年代", world.spec.year ],
-        [ "スタイル", world.spec.style ],
-        [ "概要", world.spec.summary ],
-        [ "統治", world.spec.governance ],
-        [ "ネガティブ", world.spec.negative ],
-        [ "Want", world.story.want ],
-        [ "Need", world.story.need ],
+        [ "プロンプト", world.spec?.prompt ],
+        [ "ネガティブ", world.spec?.negative ],
+        [ "年代", world.spec?.year ],
+        [ "スタイル", world.spec?.style ],
+        [ "概要", world.spec?.summary ],
+        [ "統治", world.spec?.governance ],
+        [ "Want", world.story?.want ],
+        [ "Need", world.story?.need ],
     ];
 }
 
@@ -267,6 +271,23 @@ const requestApi = (() => {
     }
 })();
 
+function requestChirpApi(chirdId) {
+    return requestApi(`https://api.chirper.ai/v1/chirp/${chirdId}`);
+}
+
+function requestChirperApi(username) {
+    return requestApi(`https://api.chirper.ai/v1/chirper/${username}`);
+}
+
+function requestWorldMembersApi(username) {
+    return requestApi(`https://api.chirper.ai/v1/world/${username}/members`);
+}
+
+function requestWorldApi(username) {
+    return requestApi(`https://api.chirper.ai/v1/world/${username}`);
+}
+
+
 
 // **************************
 // ***   Chirper Viewer   ***
@@ -306,12 +327,12 @@ const hookChirperViewer = (() => {
 
     /**
      * watch API result
-     * @param {string} urlPrefix 
+     * @param {function(string): Promise<any>} api 
      * @param {HTMLInputElement} inputId 
      * @param {HTMLButtonElement[]} buttons 
      * @param {function(any): void} callback
      */
-    function watchApi(urlPrefix, inputId, buttons, callback) {
+    function watchApi(api, inputId, buttons, callback) {
         let previousResult = "";
 
         /**
@@ -327,25 +348,29 @@ const hookChirperViewer = (() => {
                 return ;
             }
     
-            const apiUrl = urlPrefix + apiId;
-            requestApi(apiUrl).then((response) => {
+            api(apiId).then((response) => {
                 const resultString = JSON.stringify(response.result);
 
                 if (previousResult !== resultString) {
                     previousResult = resultString;
-                    console.log(response.result);
-                    callback(response.result);
+                    if (response?.result?.type === "chirper" || response?.result?.type === "world") {
+                        console.log(response.result);
+                        callback(response.result);
+                    }
                 }
 
-                if (response.result.progress < 100) {
-                    timerId = setTimeout(callApi, 3000);
+                if (response?.result?.progress !== 100) {
+                    timerId = setTimeout(callApi, 5000);
                 }
             }).catch(console.error);
         };
 
         // ボタン監視
         for (const b of buttons) {
-            b.addEventListener("click", callApi);
+            b.addEventListener("click", () => {
+                clearTimeout(timerId);
+                timerId = setTimeout(callApi, 10000);
+            });
         }
 
         callApi();
@@ -388,7 +413,7 @@ const hookChirperViewer = (() => {
         if (username) {
             document.body.appendChild(paramWindow);            
 
-            watchApi("https://api.chirper.ai/v1/chirper/", username, buttons, (result) => {
+            watchApi(requestChirperApi, username, buttons, (result) => {
                 createChirperPanel(paramWindow, chirper2Tuple(result));
             })
 
@@ -399,7 +424,7 @@ const hookChirperViewer = (() => {
         if (slug) {
             document.body.appendChild(paramWindow);
 
-            watchApi("https://api.chirper.ai/v1/world/", slug, buttons, (result) => {
+            watchApi(requestWorldApi, slug, buttons, (result) => {
                 createChirperPanel(paramWindow, world2Tuple(result));
             })
 
@@ -436,8 +461,7 @@ const hookThreadViewer = (() => {
                 console.log(`Fetch Thread: ${threadId}`);
                 thread.setAttribute("chirperutil-thread-id", threadId);
 
-                const apiUrl = `https://api.chirper.ai/v1/chirp/${threadId}`;
-                requestApi(apiUrl).then((response) => {
+                requestChirpApi(threadId).then((response) => {
                     console.log(response);
                     if ("meta" in response.result) {
                         const meta = response.result.meta;
@@ -474,9 +498,11 @@ const hookHeroViewer = (() => {
     /**
      * set chirper information window hook to an element
      * @param {HTMLElement} elem
-     * @param {function (HTMLElement): string} getChirperId
+     * @param {function(HTMLElement): string} getChirperId
+     * @param {function(string): Promise<any>} api
+     * @param {function(any): string[][]} apiParser
      */
-    function setChirperInformationHook(elem, getChirperId) {
+    function setInformationHook(elem, getChirperId, api, apiParser) {
         if (elem.getAttribute("chirperutil-avatar-hook")) {
             return ;
         }
@@ -488,9 +514,9 @@ const hookHeroViewer = (() => {
                 e.preventDefault();
 
                 // Get chirper information
-                const apiUrl = `https://api.chirper.ai/v1/chirper/${chiperId}`;
-                requestApi(apiUrl).then((response) => {
-                    createChirperPanel(div, chirper2Tuple(response.result));
+                api(chiperId).then((response) => {
+                    console.log(response.result);
+                    createChirperPanel(div, apiParser(response.result));
                     document.body.appendChild(div);
                 }).catch(console.error);            
             }
@@ -504,6 +530,14 @@ const hookHeroViewer = (() => {
     function getChirperIdFromLocation() {
         const m = document.location.href.match(/\/ja\/([^#/]+)/);
         if (m && ![ "search", "gallery", "explore", "activity", "chirpers", "messages", "worlds" ].includes(m[1])) {
+            return m[1];
+        }
+        return null;
+    }
+
+    function getWorldIdFromLocation() {
+        const m = document.location.href.match(new RegExp("/ja/worlds/([^#/]+)"));
+        if (m) {
             return m[1];
         }
         return null;
@@ -526,12 +560,37 @@ const hookHeroViewer = (() => {
     }
 
     return function heroViewer() {
-        for (const hero of document.getElementsByClassName("ChirperExplore-hero")) {
-            setChirperInformationHook(hero, getChirperIdFromLocation);
+        for (const item of document.getElementsByClassName("ChirperExplore-item")) {
+            for (let node = item.firstChild; node; node = node.nextSibling) {
+                let m = (node.href || "").match(new RegExp("/ja/worlds/([^#/]+)"));
+                if (m) {
+                    const worldId = m[1];
+                    setInformationHook(item, () => worldId, requestWorldApi, world2Tuple);
+                    break;
+                }
+
+                m = (node.href || "").match(new RegExp("/ja/([^#/]+)"));
+                if (m) {
+                    const chirperId = m[1];
+                    setInformationHook(item, () => chirperId, requestChirperApi, chirper2Tuple);
+                    break;
+                }
+            }
+        }
+
+        if (document.location.href.includes("/worlds/")) {
+            for (const hero of document.getElementsByClassName("ChirperExplore-hero")) {
+                setInformationHook(hero, getWorldIdFromLocation, requestWorldApi, world2Tuple);
+            }
+        }
+        else {
+            for (const hero of document.getElementsByClassName("ChirperExplore-hero")) {
+                setInformationHook(hero, getChirperIdFromLocation, requestChirperApi, chirper2Tuple);
+            }
         }
 
         for (const avatar of document.getElementsByClassName("ChirperChirp-avatar")) {
-            setChirperInformationHook(avatar, getChirperIdFromAnchor);
+            setInformationHook(avatar, getChirperIdFromAnchor, requestChirperApi, chirper2Tuple);
         }
     };
 })();
