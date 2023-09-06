@@ -101,6 +101,19 @@ function setChirperFont(element) {
 }
 
 /**
+ * set chirper site small font information
+ * @param {HTMLElement} element to be set font information
+ * @returns {undefined}
+ */
+function setChirperSmallFont(element) {
+    element.style.color = "rgba(0, 0, 0, 0.6)"
+    element.style.fontFamily = "-apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif";
+    element.style.fontWeight = 400;
+    element.style.fontSize = "0.875rem";
+    element.style.lineHeight = 1.43;
+}
+
+/**
  * make top-level div element
  * @returns {HTMLDivElement}
  */
@@ -252,6 +265,93 @@ function createChirperPanel(paramWindow, parameters) {
 // *****************************
 // ***   Chirper API Queue   ***
 // *****************************
+
+const apiCache = (() => {
+    let db = null;
+
+    // Open a database
+    const openRequest = indexedDB.open("chirperUtilApiCache", 1);
+
+    // Handle database upgrade
+    openRequest.onupgradeneeded = function(event) {
+        // Get the database object
+        db = event.target.result;
+
+        // Create an object store for books
+        const chirpStore = db.createObjectStore("chirp", { keyPath: "url" });
+
+        console.log(chirpStore);
+    };
+
+    // Handle database success
+    openRequest.onsuccess = function(event) {
+        console.log("DB opened");
+
+        // Get the database object
+        db = event.target.result;
+    };
+
+    // Handle database error
+    openRequest.onerror = function(event) {
+        // Get the error from the request
+        const error = event.target.error;
+
+        // Do something with the error
+        console.error(error);
+    };
+
+    return {
+        read(url) {
+            return new Promise((resolve, reject) => {
+                // Start a transaction for books
+                const tx = db.transaction("chirp", "readonly");
+
+                // Get the object store for books
+                const chirpStore = tx.objectStore("chirp");
+
+                // Get a book by its key
+                const getRequest = chirpStore.get(url);
+
+                // Handle request success
+                getRequest.onsuccess = function(event) {
+                    // Get the result from the request
+                    resolve(event.target.result);
+                };
+
+                // Handle request error
+                getRequest.onerror = function(event) {
+                    // Get the error from the request
+                    reject(event.target.error);
+                };
+
+            });
+        },
+        write(url, data) {
+            return new Promise((resolve, reject) => {
+                // Start a transaction for books
+                const tx = db.transaction("chirp", "readwrite");
+
+                // Get the object store for books
+                const chirpStore = tx.objectStore("chirp");
+
+                // Get a book by its key
+                const putRequest = chirpStore.put({ url, data });
+
+                // Handle request success
+                putRequest.onsuccess = function(event) {
+                    // Get the result from the request
+                    resolve(event.target.result);
+                };
+
+                // Handle request error
+                putRequest.onerror = function(event) {
+                    // Get the error from the request
+                    reject(event.target.error);
+                };
+            });
+        }
+    }
+})();
 
 const requestApi = (() => {
     let promise = new Promise((resolve) => {
@@ -439,13 +539,93 @@ const hookChirperViewer = (() => {
 // *************************
 
 const hookThreadViewer = (() => {
+    /**
+     * create thought element
+     * @param {string | string[]} textContent 
+     * @returns {HTMLDivElement} thought element
+     */
+    function createThoughtElement(textContent) {
+        const thoughtElement = document.createElement("div");
+        thoughtElement.classList.add("ChirperChirp-content-text", "MuiBox-root");
+        setChirperSmallFont(thoughtElement);
+        thoughtElement.style.justifyContent = "left";
+        thoughtElement.setAttribute("chirperutil-processed", true);
+        if (Array.isArray(textContent)) {
+            for (const t of textContent) {
+                thoughtElement.appendChild(document.createTextNode(t));
+                thoughtElement.appendChild(document.createElement("br"));
+            }
+        }
+        else {
+            thoughtElement.textContent = textContent;
+        }
+        return thoughtElement;
+    }
+
+    /**
+     * get chirp data
+     * @param {string} chirpId 
+     * @returns {Promise<any>} chirp data
+     */
+    function getChirpData(chirpId) {
+        return new Promise((resolve, reject) => {
+            apiCache.read(chirpId)
+                .then((result) => {
+                    if (result) {
+                        console.log(`IndexedDB: ${chirpId}`);
+                        resolve(result.data);
+                        return ;
+                    }
+                    
+                    console.log(`fetch: ${chirpId}`);
+                    return requestChirpApi(chirpId);
+                })
+                .then((response) => {
+                    if (response) {
+                        apiCache.write(chirpId, response.result);
+                        resolve(response.result);
+                        console.log(response);
+                    }
+                    else {
+                        console.log("no response");
+                    }
+                })
+                .catch(reject);
+        });
+    }
+
     return function threadViewer() {
-        for (const thread of document.getElementsByClassName("ChirperThread")) {
-            if (thread.getAttribute("chirperutil-thread-id")) {
+        for (const contentText of document.getElementsByClassName("ChirperChirp-content-text")) {
+            if (contentText.getAttribute("chirperutil-processed")) {
                 continue;
             }
 
-            for (const link of thread.getElementsByTagName("a")) {
+            const muiBoxRoot = contentText.parentElement?.parentElement?.parentElement;
+            if (muiBoxRoot === null) {
+                continue;
+            }
+
+            let thought = null;
+            for (const elem of muiBoxRoot.getElementsByClassName("ChirperChirp-user-name")) {
+                thought = elem.getAttribute("aria-label");
+                if (thought !== null) { 
+                    break;
+                }
+            }
+
+            if (thought === null) {
+                console.log("no aria-label")
+                continue;
+            }
+            console.log(thought);
+
+            if (0 < thought.length) {
+                contentText.parentElement.appendChild(createThoughtElement(thought));
+                contentText.setAttribute("chirperutil-processed", true);
+                continue;
+            }
+            
+            for (const link of muiBoxRoot.getElementsByTagName("a")) {
                 const match = link.href.match(new RegExp("/chirp/([^/]+)"));
                 if (!match) {
                     continue;
@@ -454,28 +634,40 @@ const hookThreadViewer = (() => {
 
                 if (threadId.includes("#")) {
                     console.log(`Ignore Thread: ${threadId}`);
-                    thread.setAttribute("chirperutil-thread-id", threadId.split("#")[0]);
+                    contentText.setAttribute("chirperutil-processed", threadId.split("#")[0]);
                     continue;
                 }
 
-                console.log(`Fetch Thread: ${threadId}`);
-                thread.setAttribute("chirperutil-thread-id", threadId);
+                const metaElement = createThoughtElement("plot...");
+                metaElement.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-                requestChirpApi(threadId).then((response) => {
-                    console.log(response);
-                    if ("meta" in response.result) {
-                        const meta = response.result.meta;
-                        thread.setAttribute("title", [
-                            `台本: ${meta.plot}`,
-                            `主役: ${meta.protagonist}`,
-                            `敵役: ${meta.antagonist}`,
-                            `設定: ${meta.setting}`,
-                            `事件: ${meta.incident}`,
-                            `導入: ${meta.complication}`,
-                            `顛末: ${meta.crisis}`,
-                        ].join("\n"));
-                    }
-                }).catch(console.error);
+                    console.log(threadId);
+                    getChirpData(threadId)
+                        .then((data) => {
+                            console.log(data);
+                            const meta = data.meta;
+                            if (meta) {
+                                metaElement.textContent = null;
+                                for (const t of [
+                                        `台本: ${meta.plot}`,
+                                        `主役: ${meta.protagonist}`,
+                                        `敵役: ${meta.antagonist}`,
+                                        `設定: ${meta.setting}`,
+                                        `事件: ${meta.incident}`,
+                                        `導入: ${meta.complication}`,
+                                        `顛末: ${meta.crisis}`,
+                                    ]) {
+                                    metaElement.appendChild(document.createTextNode(t));
+                                    metaElement.appendChild(document.createElement("br"));
+                                }
+                            }
+                        })
+                        .catch(console.error);
+                });
+                contentText.parentElement.appendChild(metaElement)                
+                contentText.setAttribute("chirperutil-processed", threadId);
                 break
             }
         }
