@@ -663,6 +663,9 @@ const hookThreadViewer = (() => {
                                     metaElement.appendChild(document.createElement("br"));
                                 }
                             }
+                            else {
+                                metaElement.textContent = "FAILED!!!";
+                            }
                         })
                         .catch(console.error);
                 });

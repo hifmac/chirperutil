@@ -1,7 +1,7 @@
 {
     "name" : "Chirpeeper",
-    "description" : "Chirper API Peeper",
-    "version" : "0.2.1",
+    "description" : "Chirper API Utility",
+    "version" : "0.2.2",
     "manifest_version" : 3,
     "permissions": [
         "scripting"
