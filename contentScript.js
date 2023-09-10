@@ -1,32 +1,33 @@
-/*
- * Chirpeeper
- * MIT License
- *
+/**
+ * @file contentScript.js
+ * @license MIT-License
  * Copyright (c) 2023 hifmac
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
  */
 
 // *******************
 // ***   Utility   ***
 // *******************
 
+function padZero(num, width) {
+    return String(num).padStart(width, "0")
+}
+
+/**
+ * format date time string to local time
+ * @param {string} dateString 
+ */
+function formatDateTimeString(dateString) {
+    const localTime = new Date(dateString);
+    return `${localTime.getFullYear()}/${localTime.getMonth()}/${localTime.getDate()} ${padZero(localTime.getHours(), 2)}:${padZero(localTime.getMinutes(), 2)}:${padZero(localTime.getSeconds(), 2)}`;
+}
+
+/**
+ * format date time string for bumpedAt (missed time zone)
+ * @param {string} dateString 
+ */
+function formatBumpedAtDateTimeString(dateString) {
+    return formatDateTimeString(dateString.replace("Z", "-0400"));
+}
 
 /**
  * create chirper type dict to tuple
@@ -36,30 +37,40 @@
 function chirper2Tuple(chirper) {
     return [
         [ "@ID", chirper.username ],
-        [ "名前", chirper.name ],
-        [ "言語", chirper.lang ],
-        [ "半生", chirper.bio ],
-        [ "バックストーリー", chirper.backstory ],
-        [ "Want", chirper.story?.want ],
-        [ "Need", chirper.story?.need ],
-        [ "進捗", (chirper.story?.progress || []).map((x) => `${x.name}: ${x.description}`) ],
-        [ "年齢", chirper.age ],
-        [ "性別", chirper.gender ],
-        [ "種族", chirper.spec?.species ],
-        [ "人種", chirper.race ],
-        [ "居場所", chirper.spec?.location ],
-        [ "意志", chirper.spec?.intention ],
-        [ "要約", chirper.spec?.summary ],
-        [ "プロンプト", chirper.spec?.prompt ],
-        [ "ネガティブ", chirper.spec?.negative ],
-        [ "設定", chirper.spec?.setting ],
-        [ "投稿例", chirper.spec?.posts ],
-        [ "返信例", chirper.spec?.responses ],
-        [ "チャープ数", chirper.chirps ],
-        [ "顔", chirper.spec?.face ],
-        [ "髪", chirper.spec?.hair ],
-        [ "体", chirper.spec?.body ],
-        [ "スタイル", chirper.spec?.style ],
+        [ "Version", chirper.version ],
+        [ "時刻情報",
+            [
+                "bumpedAt " + formatBumpedAtDateTimeString(chirper.bumpedAt),
+                "onlineAt " + formatDateTimeString(chirper.onlineAt),
+                "indexedAt " + formatDateTimeString(chirper.indexedAt),
+                "chosenAt " + formatDateTimeString(chirper.chosenAt),
+                "journalAt " + formatDateTimeString(chirper.journalAt),
+            ]
+        ],
+        [ "名前 (name)", chirper.name ],
+        [ "言語 (lang)", chirper.lang ],
+        [ "半生 (bio)", chirper.bio ],
+        [ "バックストーリー (backstory)", chirper.backstory ],
+        [ "年齢 (age)", chirper.age ],
+        [ "性別 (gender)", chirper.gender ],
+        [ "人種 (race)", chirper.race ],
+        [ "チャープ数 (chirps)", chirper.chirps ],
+        [ "夢 (story.want)", chirper.story?.want ],
+        [ "必須事項 (story.need)", chirper.story?.need ],
+        [ "進捗 (story.progress)", (chirper.story?.progress || []).map((x) => `${x.name} - ${x.description}`) ],
+        [ "種族 (spec.species)", chirper.spec?.species ],
+        [ "居場所 (spec.location)", chirper.spec?.location ],
+        [ "意志 (spec.intention)", chirper.spec?.intention ],
+        [ "要約 (spec.summary)", chirper.spec?.summary ],
+        [ "プロンプト (spec.prompt)", chirper.spec?.prompt ],
+        [ "ネガティブ (spec.negative)", chirper.spec?.negative ],
+        [ "投稿例 (spec.posts)", chirper.spec?.posts ],
+        [ "返信例 (spec.responses)", chirper.spec?.responses ],
+        [ "設定 (spec.setting)", chirper.spec?.setting ],
+        [ "顔 (spec.face)", chirper.spec?.face ],
+        [ "髪 (spec.hair)", chirper.spec?.hair ],
+        [ "体 (spec.body)", chirper.spec?.body ],
+        [ "スタイル (spec.style)", chirper.spec?.style ],
     ];
 }
 
@@ -88,30 +99,108 @@ function world2Tuple(world) {
     ];
 }
 
-/**
- * set chirper site font information
- * @param {HTMLElement} element to be set font information
- * @returns {undefined}
- */
-function setChirperFont(element) {
-    element.style.fontFamily = "-apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif";
-    element.style.fontWeight = 400;
-    element.style.fontSize = "1rem";
-    element.style.lineHeight = 1.5;
+
+// *********************************
+// ***   CSS related functions   ***
+// *********************************
+
+function registerChirperUtilClasses() {
+
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
+.ChirperUtilFont {
+    color: rgba(15, 15, 15, 1);
+    font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1.5em;
 }
 
-/**
- * set chirper site small font information
- * @param {HTMLElement} element to be set font information
- * @returns {undefined}
- */
-function setChirperSmallFont(element) {
-    element.style.color = "rgba(0, 0, 0, 0.6)"
-    element.style.fontFamily = "-apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif";
-    element.style.fontWeight = 400;
-    element.style.fontSize = "0.875rem";
-    element.style.lineHeight = 1.43;
+.ChirperUtilSmallFont {
+    color: rgba(0, 0, 0, 0.6);
+    font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    font-size: 0.875rem;
+    line-height: 1.43em;
 }
+
+.ChirperInformationBox {
+    z-index: 2000;
+    position: fixed;
+    max-height: calc(100% - 64px);
+    max-width: 600px;
+    width: calc(100% - 64px);
+    background: #ffffff;
+    overflow: auto;
+    padding: 16px;
+    border-top: 8px solid rgb(50, 143, 206);
+    border-radius: 12px;
+    box-sizing: inherit;
+}
+
+.ChirperUtilMetaText {
+    width: 100%;
+    word-break: break-word;
+    justify-content: left;
+}
+
+.ChirperUtilFormBox {
+    margin: 16px 0px 0px;
+    position: relative;
+}
+
+.ChirperUtilFormLabel {
+    position: absolute;
+    background: #ffffff;
+    z-index: 1;
+    top: 0px;
+    left: 0px;
+    transform-origin: left top;
+    transform: translate(14px, -9px) scale(0.75);
+    margin: 0px;
+    padding: 0px 16px 0px 16px;
+}
+
+.ChirperUtilFormInput {
+    box-sizing: border-box;
+    cursor: text;
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+    position: relative;
+    border-radius: 12px;
+    border: 1px solid;
+    padding: 16.5px 14px;
+}
+
+.ChirperUtilTextarea {
+    letter-spacing: inherit;
+    border: 0px;
+    box-sizing: content-box;
+    background: none;
+    height: auto;
+    margin: 0px;
+    display: block;
+    min-width: 0px;
+    width: 100%;
+    resize: none;
+    padding: 0px;
+}
+
+.ChirperUtilParagraph {
+    height: auto;
+    width: 100%;
+    overflow: hidden;
+    resize: none;
+    padding: 0px;
+    margin: 0px;
+}
+
+`;
+    document.head.appendChild(styleSheet);
+}
+
+
 
 /**
  * make top-level div element
@@ -119,21 +208,9 @@ function setChirperSmallFont(element) {
  */
 function createChirperBox() {
     const paramWindow = document.createElement("div");
-    paramWindow.classList.add("MuiStack-root");
+    paramWindow.classList.add("ChirperInformationBox");
     paramWindow.style.top = "0" + "px";
     paramWindow.style.left = "0" + "px";
-    paramWindow.style.zIndex = 2000;
-    paramWindow.style.position = "fixed";
-    paramWindow.style.maxHeight = "calc(100% - 64px)";
-    paramWindow.style.maxWidth = "600px";
-    paramWindow.style.width = "calc(100% - 64px)";
-    paramWindow.style.background = "#ffffff";
-    paramWindow.style.overflow = "auto";
-    paramWindow.style.flex = "1 1 auto";
-    paramWindow.style.padding = "16px";
-    paramWindow.style.borderTop = "8px solid rgb(50, 143, 206)";
-    paramWindow.style.borderRadius = "12px";
-
 
     let originTop = 0;
     let originLeft = 0;
@@ -179,87 +256,84 @@ function createChirperBox() {
  * @param {string[][]} parameters 
  */
 function createChirperPanel(paramWindow, parameters) {
-    while (paramWindow.firstChild) {
-        paramWindow.removeChild(paramWindow.firstChild);
-    }
+    removeChildren(paramWindow);
 
     let n = 0;
     for (const parameter of parameters) {
         n += 1;
 
+        // create form label
         const label = document.createElement("label");
         label.classList.add(
-            "MuiInputLabel-root",
-            "MuiInputLabel-formControl",
-            "MuiInputLabel-animated",
-            "MuiInputLabel-shrink",
-            "MuiInputLabel-outlined",
-            "MuiFormLabel-root",
-            "MuiFormLabel-colorPrimary",
-            "MuiFormLabel-filled");
-        setChirperFont(label);
-        label.style.position = "absolute";
-        label.style.background = "#ffffff";
-        label.style.top = "0px";
-        label.style.left = "0px";
-        label.style.transformOrigin = "left top";
-        label.style.transform = "translate(14px, -9px) scale(0.75)";
-        label.style.margin = "0px"
-        label.style.padding = "0px 16px 0px 16px";
-        label.innerText = parameter[0];
+            "ChirperUtilFormLabel",
+            "ChirperUtilFont");
+        label.textContent = parameter[0];
         label.setAttribute("data-shrink", true);
         label.setAttribute("for", `parameter${n}`)
         label.setAttribute("name", `parameter${n}-label`)
 
-        const textArea = document.createElement("textarea");
-        textArea.classList.add(
-            "MuiOutlinedInput-input",
-            "MuiInputBase-input",
-            "MuiInputBase-inputMultiline")
-        setChirperFont(textArea);
-        textArea.id = `parameter${n}`;
-        textArea.style.width = "100%";
-        textArea.style.overflow = "hidden";
-        textArea.style.resize = "none";
-        textArea.style.padding = "16px";
+        // create parameter paragraph
+        const paragraph = document.createElement("p");
+        paragraph.classList.add("ChirperUtilParagraph", "ChirperUtilFont")
+        paragraph.id = `parameter${n}`;
 
-        requestAnimationFrame(() => {
-            textArea.style.height = (textArea.scrollHeight) + "px";
-        });
-  
-        if (Array.isArray(parameter[1])) {
-            textArea.innerText = "";
-            for (const index in parameter[1]) {
-                textArea.appendChild(document.createTextNode(`${index}: ${parameter[1][index]}\n`));                  
-            }  
-        }
-        else {
-            textArea.innerText = `${parameter[1]}`.trim();
+        const textList = (Array.isArray(parameter[1])
+            ? parameter[1].map((value, index) => `${index + 1}: ${value}`) 
+            : `${parameter[1]}`.trim().split("\n"));
+        for (const text of textList) {
+            if (paragraph.firstChild) {
+                paragraph.append(document.createElement("br"));
+            }
+            paragraph.append(document.createTextNode(text));
         }
 
+        // create form input div
         const input = document.createElement("div");
-        input.classList.add(
-            "MuiOutlinedInput-root",
-            "MuiInputBase-root",
-            "MuiInputBase-colorPrimary",
-            "MuiInputBase-fullWidth",
-            "MuiInputBase-formControl",
-            "MuiInputBase-adornedStart")
-        input.style.borderRadius = "12px";
-        input.appendChild(textArea);
+        input.classList.add("ChirperUtilFormInput")
+        input.appendChild(paragraph);
 
+        // create form 
         const box = document.createElement("div");
-        box.classList.add(
-            "MuiFormControl-root",
-            "MuiFormControl-fullWidth",
-            "MuiTextField-root");
-        box.style.margin = "16px 0px 0px";
-        box.style.position = "relative";
+        box.classList.add("ChirperUtilFormBox");
         box.appendChild(label);
         box.appendChild(input);
         paramWindow.appendChild(box);
     }
 }
+
+/**
+ * remove children from element
+ * @param {HTMLElement} elems 
+ */
+function removeChildren(elems) {
+    while (elems.firstChild) {
+        elems.removeChild(elems.firstChild);
+    }
+}
+
+// ***************************
+// ***   GPT-3 Tokenizer   ***
+// ***************************
+
+const gpt3Encoder = (() => {
+    let encoder = null;
+
+    const src = chrome.runtime.getURL("script/gpt3encoder.js");
+    import(src).then((newModule) => {
+        encoder = newModule.encoder; 
+        console.log("GPT-3 Encoder loaded", encoder);
+    }).catch(console.error);          
+
+    return {
+        countToken(text) {
+            if (encoder) {
+                return encoder.countTokens(text);
+            }
+        
+            return 0;
+        }
+    }
+})();
 
 
 // *****************************
@@ -371,6 +445,13 @@ const requestApi = (() => {
     }
 })();
 
+function requestTranslateApi(chirdId) {
+    return fetch(`https://asia-northeast1-chirper-tool.cloudfunctions.net/chirp-translator-v1?chirp_id=${chirdId}`).then((response) => {
+            console.log(response);
+            return response.text();
+        });
+}
+
 function requestChirpApi(chirdId) {
     return requestApi(`https://api.chirper.ai/v1/chirp/${chirdId}`);
 }
@@ -395,7 +476,7 @@ function requestWorldApi(username) {
 
 const hookChirperViewer = (() => {
     const paramWindow = createChirperBox();
-    paramWindow.innerText = "loading...";
+    paramWindow.textContent = "loading...";
 
     /** @type {HTMLElement} */
     let presentation = null;
@@ -476,6 +557,30 @@ const hookChirperViewer = (() => {
         callApi();
     }
 
+    function addTokenCounter(labelId, textareaId) {
+        // get target elements
+        const labelElement = document.getElementById(labelId);
+        const textareaElement = document.getElementById(textareaId);
+        if (labelElement === null || textareaElement === null) {
+            console.log(`Missing element(s) to count token: ${labelElement}, ${textareaElement}`);
+            return ;
+        }
+
+        // reduce line height to show token count
+        labelElement.style.lineHeight = "1.1em";
+
+        // save original label text to reuse
+        const labelText = labelElement.textContent;
+
+        // count tokens and update label per input
+        textareaElement.addEventListener("input", (e) => {
+            labelElement.textContent = null;
+            removeChildren(labelElement);
+            labelElement.appendChild(document.createTextNode(labelText));
+            labelElement.appendChild(document.createElement("br"));
+            labelElement.appendChild(document.createTextNode(`${gpt3Encoder.countToken(textareaElement.value)} / 1536`));
+        });       
+    }
 
     return function chirperViewer() {
         // DOMから切り離されていたら狩猟する
@@ -517,6 +622,8 @@ const hookChirperViewer = (() => {
                 createChirperPanel(paramWindow, chirper2Tuple(result));
             })
 
+            addTokenCounter("persona-label", "persona");
+
             return ;
         }
 
@@ -527,6 +634,8 @@ const hookChirperViewer = (() => {
             watchApi(requestWorldApi, slug, buttons, (result) => {
                 createChirperPanel(paramWindow, world2Tuple(result));
             })
+
+            addTokenCounter("description-label", "description");
 
             return ;
         }
@@ -546,9 +655,9 @@ const hookThreadViewer = (() => {
      */
     function createThoughtElement(textContent) {
         const thoughtElement = document.createElement("div");
-        thoughtElement.classList.add("ChirperChirp-content-text", "MuiBox-root");
-        setChirperSmallFont(thoughtElement);
-        thoughtElement.style.justifyContent = "left";
+        thoughtElement.classList.add(
+            "ChirperUtilMetaText",
+            "ChirperUtilSmallFont");
         thoughtElement.setAttribute("chirperutil-processed", true);
         if (Array.isArray(textContent)) {
             for (const t of textContent) {
@@ -567,43 +676,94 @@ const hookThreadViewer = (() => {
      * @param {string} chirpId 
      * @returns {Promise<any>} chirp data
      */
-    function getChirpData(chirpId) {
-        return new Promise((resolve, reject) => {
-            apiCache.read(chirpId)
-                .then((result) => {
-                    if (result) {
-                        console.log(`IndexedDB: ${chirpId}`);
-                        resolve(result.data);
-                        return ;
-                    }
-                    
-                    console.log(`fetch: ${chirpId}`);
-                    return requestChirpApi(chirpId);
-                })
-                .then((response) => {
-                    if (response) {
-                        apiCache.write(chirpId, response.result);
-                        resolve(response.result);
-                        console.log(response);
-                    }
-                    else {
-                        console.log("no response");
-                    }
-                })
-                .catch(reject);
-        });
+    async function getChirpData(chirpId) {
+        const result = await apiCache.read(chirpId);
+        if (result) {
+            console.log(`IndexedDB: ${chirpId}`);
+            return result.data;
+        }
+
+        console.log(`fetch: ${chirpId}`);
+        const apiData = await requestChirpApi(chirpId);
+        if (apiData) {
+            console.log(apiData.result);
+            apiCache.write(chirpId, apiData.result);
+            return apiData.result;
+        }
+
+        console.log("no response");
+        return null
+    }
+
+    /**
+     * 
+     * @param {HTMLElement} elem 
+     */
+    function getChirpId(elem) {
+        for (const link of elem.getElementsByTagName("a")) {
+            const match = link.href.match(new RegExp("/chirp/([^/#]+)([^/]*)"));
+            if (match) {
+                // no thread
+                if (match[2].length === 0) {
+                    return {
+                        thread: null,
+                        chirp: match[1],
+                    };
+                }
+
+                return {
+                    thread: match[1],
+                    chirp: match[2].substring(1),
+                };
+            }
+        }
+        return null;
     }
 
     return function threadViewer() {
         for (const contentText of document.getElementsByClassName("ChirperChirp-content-text")) {
+            // return if already processed
             if (contentText.getAttribute("chirperutil-processed")) {
                 continue;
             }
 
+            // return if no bot root is found
             const muiBoxRoot = contentText.parentElement?.parentElement?.parentElement;
             if (muiBoxRoot === null) {
+                console.log("No Box Root", contentText.textContent);
+                contentText.setAttribute("chirperutil-processed", true);
                 continue;
             }
+
+            // return if no chirp id found
+            const chirpId = getChirpId(muiBoxRoot);
+            if (chirpId === null) {
+                console.log("No Chirp ID", contentText.textContent);
+                contentText.setAttribute("chirperutil-processed", true);
+                continue;
+            }
+
+            // set chirp id as processed
+            contentText.setAttribute("chirperutil-processed", chirpId.chirp);
+
+            // set translator
+            contentText.addEventListener("contextmenu", (e) => {
+                if (contentText.getAttribute("chirperutil-translated")) {
+                    return ;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                contentText.setAttribute("chirperutil-translated", true);
+                contentText.appendChild(document.createElement("br"));                           
+                contentText.appendChild(document.createTextNode("processing..."));
+                requestTranslateApi(chirpId.chirp)
+                    .then((translation) => {
+                        contentText.lastChild.textContent = translation;
+                    }).catch(console.error);
+            });
+        
 
             let thought = null;
             for (const elem of muiBoxRoot.getElementsByClassName("ChirperChirp-user-name")) {
@@ -614,65 +774,52 @@ const hookThreadViewer = (() => {
             }
 
             if (thought === null) {
-                console.log("no aria-label")
+                console.log("No Aria-Label", contentText.textContent);
                 continue;
             }
-            console.log(thought);
 
             if (0 < thought.length) {
+                console.log("Set Thought", contentText.textContent);
                 contentText.parentElement.appendChild(createThoughtElement(thought));
-                contentText.setAttribute("chirperutil-processed", true);
+                continue;
+            }
+
+            if (chirpId.thread !== null) {
+                console.log("Thread's Child", contentText.textContent);
                 continue;
             }
             
-            for (const link of muiBoxRoot.getElementsByTagName("a")) {
-                const match = link.href.match(new RegExp("/chirp/([^/]+)"));
-                if (!match) {
-                    continue;
-                }
-                const threadId = match[1];
+            const metaElement = createThoughtElement("plot...");
+            metaElement.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
 
-                if (threadId.includes("#")) {
-                    console.log(`Ignore Thread: ${threadId}`);
-                    contentText.setAttribute("chirperutil-processed", threadId.split("#")[0]);
-                    continue;
-                }
-
-                const metaElement = createThoughtElement("plot...");
-                metaElement.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    console.log(threadId);
-                    getChirpData(threadId)
-                        .then((data) => {
-                            console.log(data);
-                            const meta = data.meta;
-                            if (meta) {
-                                metaElement.textContent = null;
-                                for (const t of [
-                                        `台本: ${meta.plot}`,
-                                        `主役: ${meta.protagonist}`,
-                                        `敵役: ${meta.antagonist}`,
-                                        `設定: ${meta.setting}`,
-                                        `事件: ${meta.incident}`,
-                                        `導入: ${meta.complication}`,
-                                        `顛末: ${meta.crisis}`,
-                                    ]) {
-                                    metaElement.appendChild(document.createTextNode(t));
-                                    metaElement.appendChild(document.createElement("br"));
-                                }
+                console.log(`get: ${chirpId.chirp}`);
+                getChirpData(chirpId.chirp)
+                    .then((data) => {
+                        const meta = data.meta;
+                        if (meta) {
+                            metaElement.textContent = null;
+                            for (const t of [
+                                    `台本: ${meta.plot}`,
+                                    `主役: ${meta.protagonist}`,
+                                    `敵役: ${meta.antagonist}`,
+                                    `設定: ${meta.setting}`,
+                                    `事件: ${meta.incident}`,
+                                    `導入: ${meta.complication}`,
+                                    `顛末: ${meta.crisis}`,
+                                ]) {
+                                metaElement.appendChild(document.createTextNode(t));
+                                metaElement.appendChild(document.createElement("br"));
                             }
-                            else {
-                                metaElement.textContent = "FAILED!!!";
-                            }
-                        })
-                        .catch(console.error);
-                });
-                contentText.parentElement.appendChild(metaElement)                
-                contentText.setAttribute("chirperutil-processed", threadId);
-                break
-            }
+                        }
+                        else {
+                            metaElement.textContent = "FAILED!!!";
+                        }
+                    })
+                    .catch(console.error);
+            });
+            contentText.parentElement.appendChild(metaElement)                
         }
     }
 })();
@@ -830,23 +977,42 @@ const hookWorldMenu = (() => {
     };
 })();
 
-// create an observer instance
-const observer = new MutationObserver(function (mutations) {
-    const start = Date.now();
-    hookChirperViewer();
-    console.log(`Chirper: ${Date.now() - start} [msecs]`);
-    hookThreadViewer();
-    console.log(`Thread: ${Date.now() - start} [msecs]`);
-    hookHeroViewer();
-    console.log(`Hero: ${Date.now() - start} [msecs]`);
-    hookWorldMenu();
-    console.log(`World: ${Date.now() - start} [msecs]`);
-});
-
-// configuration of the observer
-const config = { childList: true, subtree: true };
-
 document.addEventListener("DOMContentLoaded", () => {
+    registerChirperUtilClasses();
+
+    let lastUpdate = 0;
+    let updateTimer = null;
+
+    function updateNodes() {
+        lastUpdate = Date.now();
+        updateTimer = null;
+
+        const start = lastUpdate;
+        hookChirperViewer();
+        console.log(`Chirper: ${Date.now() - start} [msecs]`);
+        hookThreadViewer();
+        console.log(`Thread: ${Date.now() - start} [msecs]`);
+        hookHeroViewer();
+        console.log(`Hero: ${Date.now() - start} [msecs]`);
+        hookWorldMenu();
+        console.log(`World: ${Date.now() - start} [msecs]`);
+    }
+    
+    // create an observer instance
+    const observer = new MutationObserver(function (mutations) {
+        if (updateTimer === null) {
+            if (500 <= Date.now() - lastUpdate) {
+                updateNodes();
+            }
+            else {
+                updateTimer = setTimeout(updateNodes, 500);    
+            }
+        }
+    });
+    
+    // configuration of the observer
+    const config = { childList: true, subtree: true };
+
     // select the target node
     const target = document.querySelector('body');
 
@@ -1020,7 +1186,7 @@ const selfTranslation = {
 const tag = document.getElementById("__NEXT_DATA__");
 document.body.removeChild(tag);
 
-const nextData = JSON.parse(tag.innerText);
+const nextData = JSON.parse(tag.textContent);
 for (const pane in selfTranslation) {
     for (const tip in selfTranslation[pane]) {
         if (!(tip in nextData.props.pageProps["__namespaces"][pane])) {
@@ -1032,7 +1198,7 @@ for (const pane in selfTranslation) {
 const newTag = document.createElement("script");
 newTag.type = "application/json";
 newTag.id = "__NEXT_DATA__";
-newTag.innerText = JSON.stringify(nextData);
+newTag.textContent = JSON.stringify(nextData);
 document.body.appendChild(newTag);
 
 console.log(JSON.stringify(nextData, null, 4));
