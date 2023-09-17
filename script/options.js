@@ -153,11 +153,9 @@ function main(options) {
 
     }
 
-
-
     function refreshBody() {
         // ログエレメント
-        appendChild(document.body, "pre", (logElement) => logElement.id = "log");
+        // appendChild(document.body, "pre", (logElement) => logElement.id = "log");
         
         // ボタン
         appendChild(document.body, "div", (rootElement) => {
