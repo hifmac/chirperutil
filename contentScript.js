@@ -8,6 +8,27 @@
 // ***   Utility   ***
 // *******************
 
+/**
+ * create element with callback
+ * @param {string} tagName element tag name
+ * @param {function(HTMLElement): void} callback element callback
+ */
+function createElement(tagName, callback=null) { 
+    const element = document.createElement(tagName);
+
+    if (callback !== null) {
+        callback(element);
+    }
+
+    return element;
+}
+
+/**
+ * return zero padded string
+ * @param {number} num numeric value
+ * @param {number} width padded width
+ * @returns {string} padded string
+ */
 function padZero(num, width) {
     return String(num).padStart(width, "0")
 }
@@ -18,7 +39,7 @@ function padZero(num, width) {
  */
 function formatDateTimeString(dateString) {
     const localTime = new Date(dateString);
-    return `${localTime.getFullYear()}/${localTime.getMonth()}/${localTime.getDate()} ${padZero(localTime.getHours(), 2)}:${padZero(localTime.getMinutes(), 2)}:${padZero(localTime.getSeconds(), 2)}`;
+    return `${localTime.getFullYear()}/${localTime.getMonth() + 1}/${localTime.getDate()} ${padZero(localTime.getHours(), 2)}:${padZero(localTime.getMinutes(), 2)}:${padZero(localTime.getSeconds(), 2)}`;
 }
 
 /**
@@ -26,189 +47,141 @@ function formatDateTimeString(dateString) {
  * @param {string} dateString 
  */
 function formatBumpedAtDateTimeString(dateString) {
-    return formatDateTimeString(dateString.replace("Z", "-0400"));
+    if (dateString) {
+        return formatDateTimeString(dateString.replace("Z", "-0400"));
+    }
+    return new Date();
 }
+
+/**
+ * @typedef {{
+ *     system: string[][2]
+ *     information: string[][2]
+ *     spec: string[][2]
+ *     example: string[][2]
+ *     story: string[][2]
+ * }} BoxInformationTuples
+ */
 
 /**
  * create chirper type dict to tuple
  * @param {Object<string, Object<string, string> | string | string[]>} chirper 
- * @returns {Object<string, string | string[]>}
+ * @returns {BoxInformationTuples}
  */
 function chirper2Tuple(chirper) {
-    return [
-        [ "@ID", chirper.username ],
-        [ "Version", chirper.version ],
-        [ "時刻情報",
-            [
-                "bumpedAt " + formatBumpedAtDateTimeString(chirper.bumpedAt),
-                "onlineAt " + formatDateTimeString(chirper.onlineAt),
-                "indexedAt " + formatDateTimeString(chirper.indexedAt),
-                "chosenAt " + formatDateTimeString(chirper.chosenAt),
-                "journalAt " + formatDateTimeString(chirper.journalAt),
-            ]
+    return {
+        system: [
+            [ "Version", chirper.version ],
+            [ "時刻情報",
+                [
+                    "bumpedAt " + formatBumpedAtDateTimeString(chirper.bumpedAt),
+                    "onlineAt " + formatDateTimeString(chirper.onlineAt),
+                    "indexedAt " + formatDateTimeString(chirper.indexedAt),
+                    "chosenAt " + formatDateTimeString(chirper.chosenAt),
+                    "journalAt " + formatDateTimeString(chirper.journalAt),
+                ]
+            ],
+            [ "チャープ数", chirper.chirps ]
         ],
-        [ "名前 (name)", chirper.name ],
-        [ "言語 (lang)", chirper.lang ],
-        [ "半生 (bio)", chirper.bio ],
-        [ "バックストーリー (backstory)", chirper.backstory ],
-        [ "年齢 (age)", chirper.age ],
-        [ "性別 (gender)", chirper.gender ],
-        [ "人種 (race)", chirper.race ],
-        [ "チャープ数 (chirps)", chirper.chirps ],
-        [ "夢 (story.want)", chirper.story?.want ],
-        [ "必須事項 (story.need)", chirper.story?.need ],
-        [ "進捗 (story.progress)", (chirper.story?.progress || []).map((x) => `${x.name} - ${x.description}`) ],
-        [ "種族 (spec.species)", chirper.spec?.species ],
-        [ "居場所 (spec.location)", chirper.spec?.location ],
-        [ "意志 (spec.intention)", chirper.spec?.intention ],
-        [ "要約 (spec.summary)", chirper.spec?.summary ],
-        [ "プロンプト (spec.prompt)", chirper.spec?.prompt ],
-        [ "ネガティブ (spec.negative)", chirper.spec?.negative ],
-        [ "投稿例 (spec.posts)", chirper.spec?.posts ],
-        [ "返信例 (spec.responses)", chirper.spec?.responses ],
-        [ "設定 (spec.setting)", chirper.spec?.setting ],
-        [ "顔 (spec.face)", chirper.spec?.face ],
-        [ "髪 (spec.hair)", chirper.spec?.hair ],
-        [ "体 (spec.body)", chirper.spec?.body ],
-        [ "スタイル (spec.style)", chirper.spec?.style ],
-    ];
+        information: [
+            [ "@ID", chirper.username ],
+            [ "名前 (name)", chirper.name ],
+            [ "言語 (lang)", chirper.lang ],
+            [ "年齢 (age)", chirper.age ],
+            [ "性別 (gender)", chirper.gender ],
+            [ "種族 (species)", (chirper.species || chirper.spec?.species) ],
+            [ "人種 (race)", chirper.race ],
+            [ "性格 (personality)", chirper.personality ],
+            [ "目的 (purpose)", chirper.purpose ],
+            [ "半生 (bio)", chirper.bio ],
+            [ "バックストーリー (backstory)", chirper.backstory ],
+            [ "ネガティブ (negative)", (chirper.negative || chirper.spec?.negative) ],
+        ],
+        example: [
+            [ "投稿例 (example.posts)", (chirper.example?.responses || chirper.spec?.posts) ],
+            [ "返信例 (example.responses)", (chirper.example?.responses || chirper.spec?.responses) ],
+            [ "画像例 (example.images)", chirper.example?.images ],    
+        ],
+        story: [
+            [ "夢 (story.want)", chirper.story?.want ],
+            [ "必須事項 (story.need)", chirper.story?.need ],
+            [ "進捗 (story.progress)", (chirper.story?.progress || []).map((x) => `${x.name} - ${x.description}`) ],    
+        ],
+        spec: [
+            [ "要約 (spec.summary)", chirper.spec?.summary ],
+            [ "プロンプト (spec.prompt)", chirper.spec?.prompt ],
+            [ "意志 (spec.intention)", chirper.spec?.intention ],
+            [ "居場所 (spec.location)", chirper.spec?.location ],
+        ],
+        appearance: [
+            [ "顔 (spec.face)", chirper.spec?.face ],
+            [ "髪 (spec.hair)", chirper.spec?.hair ],
+            [ "体 (spec.body)", chirper.spec?.body ],
+            [ "スタイル (spec.style)", chirper.spec?.style ],
+            [ "設定 (spec.setting)", chirper.spec?.setting ],
+            [ "アバター・プロンプト (spec.avatar.prompt)", chirper.spec?.avatar?.prompt ],
+            [ "アバター・ネガティブ (spec.avatar.negative)", chirper.spec?.avatar?.negative ],
+            [ "バナー・プロンプト (spec.banner.prompt)", chirper.spec?.banner?.prompt ],
+            [ "バナー・ネガティブ (spec.banner.negative)", chirper.spec?.banner?.negative ],
+            [ "ポスター・プロンプト (spec.poster.prompt)", chirper.spec?.poster?.prompt ],
+            [ "ポスター・ネガティブ (spec.poster.negative)", chirper.spec?.poster?.negative ],
+        ],
+    };
 }
 
 /**
  * create world type dict to tuple
  * @param {Object<string, Object<string, string> | string | string[]>} world 
- * @returns {Object<string, string | string[]>}
+ * @returns {BoxInformationTuples}
  */
 function world2Tuple(world) {
-    return [
-        [ "@ID", world.slug ],
-        [ "名前", world.name ],
-        [ "カテゴリ", (world.categories || []).map((x) => x.name) ],
-        [ "説明", world.description ],
-        [ "言語", world.lang ],
-        [ "概要", world.short ],
-        [ "バックストーリー", world.backstory ],
-        [ "プロンプト", world.spec?.prompt ],
-        [ "ネガティブ", world.spec?.negative ],
-        [ "年代", world.spec?.year ],
-        [ "スタイル", world.spec?.style ],
-        [ "概要", world.spec?.summary ],
-        [ "統治", world.spec?.governance ],
-        [ "Want", world.story?.want ],
-        [ "Need", world.story?.need ],
-    ];
+    return {
+        system: [
+            [ "公開 (world.public)", world.public ],
+            [ "稼働 (world.running)", world.running ],
+            [ "時刻情報",
+                [
+                    "updatedAt " + formatDateTimeString(world.updatedAt),
+                    "changedAt " + formatDateTimeString(world.changedAt),
+                    "bumpedAt " + formatDateTimeString(world.bumpedAt),
+                    "startedAt " + formatDateTimeString(world.startedAt),
+                    "createdAt " + formatDateTimeString(world.createdAt),
+                ]
+            ],
+            [ "Chirper数 (world.chirpers)", world.chirpers ],
+            [ "Chirp数 (world.chirps)", world.chirps ],    
+        ],
+        information: [
+            [ "@ID", world.slug ],
+            [ "名前", world.name ],
+            [ "カテゴリ", (world.categories || []).map((x) => x.name) ],
+            [ "言語 (world.lang)", world.lang ],
+            [ "概要 (world.short)", world.short ],
+            [ "バックストーリー (world.backstory)", world.backstory ],    
+        ],
+        story: [
+            [ "Want (world.story.want)", world.story?.want ],
+            [ "Need (world.story.need)", world.story?.need ],    
+        ],
+        spec: [
+            [ "プロンプト (world.spec.prompt)", world.spec?.prompt ],
+            [ "概要 (world.spec.summary)", world.spec?.summary ],
+            [ "統治 (world.spec.governance)", world.spec?.governance ],
+            [ "ネガティブ (world.spec.negative)", world.spec?.negative ],
+            [ "年代 (world.spec.year)", world.spec?.year ],
+            [ "スタイル (world.spec.style)", world.spec?.style ],    
+        ],
+    };
 }
-
-
-// *********************************
-// ***   CSS related functions   ***
-// *********************************
-
-function registerChirperUtilClasses() {
-
-    const styleSheet = document.createElement("style");
-    styleSheet.textContent = `
-.ChirperUtilFont {
-    color: rgba(15, 15, 15, 1);
-    font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-    font-weight: 400;
-    font-size: 1rem;
-    line-height: 1.5em;
-}
-
-.ChirperUtilSmallFont {
-    color: rgba(0, 0, 0, 0.6);
-    font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-    font-weight: 400;
-    font-size: 0.875rem;
-    line-height: 1.43em;
-}
-
-.ChirperInformationBox {
-    z-index: 2000;
-    position: fixed;
-    max-height: calc(100% - 64px);
-    max-width: 600px;
-    width: calc(100% - 64px);
-    background: #ffffff;
-    overflow: auto;
-    padding: 16px;
-    border-top: 8px solid rgb(50, 143, 206);
-    border-radius: 12px;
-    box-sizing: inherit;
-}
-
-.ChirperUtilMetaText {
-    width: 100%;
-    word-break: break-word;
-    justify-content: left;
-}
-
-.ChirperUtilFormBox {
-    margin: 16px 0px 0px;
-    position: relative;
-}
-
-.ChirperUtilFormLabel {
-    position: absolute;
-    background: #ffffff;
-    z-index: 1;
-    top: 0px;
-    left: 0px;
-    transform-origin: left top;
-    transform: translate(14px, -9px) scale(0.75);
-    margin: 0px;
-    padding: 0px 16px 0px 16px;
-}
-
-.ChirperUtilFormInput {
-    box-sizing: border-box;
-    cursor: text;
-    display: inline-flex;
-    align-items: center;
-    width: 100%;
-    position: relative;
-    border-radius: 12px;
-    border: 1px solid;
-    padding: 16.5px 14px;
-}
-
-.ChirperUtilTextarea {
-    letter-spacing: inherit;
-    border: 0px;
-    box-sizing: content-box;
-    background: none;
-    height: auto;
-    margin: 0px;
-    display: block;
-    min-width: 0px;
-    width: 100%;
-    resize: none;
-    padding: 0px;
-}
-
-.ChirperUtilParagraph {
-    height: auto;
-    width: 100%;
-    overflow: hidden;
-    resize: none;
-    padding: 0px;
-    margin: 0px;
-}
-
-`;
-    document.head.appendChild(styleSheet);
-}
-
 
 
 /**
  * make top-level div element
  * @returns {HTMLDivElement}
  */
-function createChirperBox() {
+function createChirperWindow() {
     const paramWindow = document.createElement("div");
-    paramWindow.classList.add("ChirperInformationBox");
+    paramWindow.classList.add("ChirperUtilWindow");
     paramWindow.style.top = "0" + "px";
     paramWindow.style.left = "0" + "px";
 
@@ -251,55 +224,111 @@ function createChirperBox() {
 }
 
 /**
- * create chirper panel
+ * create chirper box
  * @param {HTMLDivElement} paramWindow 
- * @param {string[][]} parameters 
+ * @param {BoxInformationTuples} tuples 
  */
-function createChirperPanel(paramWindow, parameters) {
+function createChirperBox(paramWindow, tuples) {
     removeChildren(paramWindow);
 
-    let n = 0;
-    for (const parameter of parameters) {
-        n += 1;
+    const WINDOW_STATE_KEY = ".hifmac.ChirperUtil.windowState";
 
-        // create form label
-        const label = document.createElement("label");
-        label.classList.add(
-            "ChirperUtilFormLabel",
-            "ChirperUtilFont");
-        label.textContent = parameter[0];
-        label.setAttribute("data-shrink", true);
-        label.setAttribute("for", `parameter${n}`)
-        label.setAttribute("name", `parameter${n}-label`)
+    const windowState = JSON.parse(localStorage.getItem(WINDOW_STATE_KEY) || "{}");
 
-        // create parameter paragraph
-        const paragraph = document.createElement("p");
-        paragraph.classList.add("ChirperUtilParagraph", "ChirperUtilFont")
-        paragraph.id = `parameter${n}`;
+    paramWindow.append(createElement("div", (innerWindow) => {
+        innerWindow.classList.add("ChirperUtilInnerWindow");
 
-        const textList = (Array.isArray(parameter[1])
-            ? parameter[1].map((value, index) => `${index + 1}: ${value}`) 
-            : `${parameter[1]}`.trim().split("\n"));
-        for (const text of textList) {
-            if (paragraph.firstChild) {
-                paragraph.append(document.createElement("br"));
-            }
-            paragraph.append(document.createTextNode(text));
+        for (const group in tuples) {
+            innerWindow.appendChild(createElement("div", (box) => {
+                box.classList.add("ChirperUtilBox");
+
+                box.appendChild(createElement("div", (colorBar) => {
+                    colorBar.classList.add(`ChirperUtilColorBar`, `${group}`);
+                }));
+
+                box.appendChild(createElement("div", (panelElement) => {
+                    const header = document.createElement("p");
+                    header.classList.add("ChirperUtilFormParagraph", "ChirperUtilFont");
+
+                    const updatePanel = () => {
+                        console.log(JSON.stringify(windowState));
+                        if (windowState[group]) {
+                            header.textContent = "- " + group;
+
+                            let n = 0;
+                            for (const parameter of tuples[group]) {
+                                console.log(parameter);
+                                addChirperParameter(panelElement, parameter, `param.${group}.${++n}`);
+                            }
+                        }
+                        else {
+                            header.textContent = "+ " + group;
+                            while (1 < panelElement.children.length) {
+                                panelElement.removeChild(panelElement.children[1]);
+                            }
+                        }
+                    };
+
+                    panelElement.classList.add("ChirperUtilFormStack");
+                    panelElement.appendChild(header);
+                    panelElement.addEventListener("contextmenu", (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+
+                        windowState[group] = !windowState[group];
+                        localStorage.setItem(WINDOW_STATE_KEY, JSON.stringify(windowState));
+
+                        updatePanel();
+                    });
+
+                    updatePanel();
+                }));
+            }));
         }
+    }));
 
-        // create form input div
-        const input = document.createElement("div");
-        input.classList.add("ChirperUtilFormInput")
-        input.appendChild(paragraph);
-
-        // create form 
-        const box = document.createElement("div");
-        box.classList.add("ChirperUtilFormBox");
-        box.appendChild(label);
-        box.appendChild(input);
-        paramWindow.appendChild(box);
-    }
 }
+
+/**
+ * add parameter to panel
+ * @param {HTMLDivElement} panelElement 
+ * @param {[string, string | string[]]} parameter parameter tuple of name and value
+ * @param {string} parameterId parameter id
+ */
+function addChirperParameter(panelElement, parameter, parmeterId) {
+    panelElement.appendChild(createElement("div", (box) => {
+        box.classList.add("ChirperUtilFormGroup");
+
+        box.appendChild(createElement("label", (label) => {
+            label.classList.add(
+                "ChirperUtilFormLabel",
+                "ChirperUtilFont");
+            label.textContent = parameter[0];
+            label.setAttribute("data-shrink", true);
+            label.setAttribute("for", parmeterId)
+            label.setAttribute("name", parmeterId + "-label")
+        }));
+
+        box.appendChild(createElement("div", (input) => {
+            input.classList.add("ChirperUtilFormInput")
+            input.appendChild(createElement("p", (paragraph) => {
+                paragraph.id = parmeterId;
+                paragraph.classList.add("ChirperUtilFormParagraph", "ChirperUtilFont")
+
+                const textList = (Array.isArray(parameter[1])
+                    ? parameter[1].map((value, index) => `${index + 1}: ${value}`) 
+                    : `${parameter[1]}`.trim().split("\n"));
+                for (const text of textList) {
+                    if (paragraph.firstChild) {
+                        paragraph.append(document.createElement("br"));
+                    }
+                    paragraph.append(document.createTextNode(text));
+                }            
+            }));
+        }));
+    }));
+}
+
 
 /**
  * remove children from element
@@ -475,7 +504,7 @@ function requestWorldApi(username) {
 // **************************
 
 const hookChirperViewer = (() => {
-    const paramWindow = createChirperBox();
+    const paramWindow = createChirperWindow();
     paramWindow.textContent = "loading...";
 
     /** @type {HTMLElement} */
@@ -619,7 +648,7 @@ const hookChirperViewer = (() => {
             document.body.appendChild(paramWindow);            
 
             watchApi(requestChirperApi, username, buttons, (result) => {
-                createChirperPanel(paramWindow, chirper2Tuple(result));
+                createChirperBox(paramWindow, chirper2Tuple(result));
             })
 
             addTokenCounter("persona-label", "persona");
@@ -632,7 +661,7 @@ const hookChirperViewer = (() => {
             document.body.appendChild(paramWindow);
 
             watchApi(requestWorldApi, slug, buttons, (result) => {
-                createChirperPanel(paramWindow, world2Tuple(result));
+                createChirperBox(paramWindow, world2Tuple(result));
             })
 
             addTokenCounter("description-label", "description");
@@ -830,7 +859,7 @@ const hookThreadViewer = (() => {
 // *******************************
 
 const hookHeroViewer = (() => {
-    const div = createChirperBox();
+    const div = createChirperWindow();
 
     div.addEventListener("dblclick", (e) => {
         e.preventDefault();
@@ -858,7 +887,7 @@ const hookHeroViewer = (() => {
                 // Get chirper information
                 api(chiperId).then((response) => {
                     console.log(response.result);
-                    createChirperPanel(div, apiParser(response.result));
+                    createChirperBox(div, apiParser(response.result));
                     document.body.appendChild(div);
                 }).catch(console.error);            
             }
@@ -971,17 +1000,70 @@ const hookWorldMenu = (() => {
         }
 
         if (worldMenu && worldMenu.parentNode !== sideMenuContent[0].firstChild) {
-            sideMenuContent[0].firstChild.insertBefore(worldMenu,
-                sideMenuContent[0].firstChild.lastChild);
+            sideMenuContent[0].firstChild.insertBefore(worldMenu, sideMenuContent[0].firstChild.lastChild);
         }
     };
 })();
 
-document.addEventListener("DOMContentLoaded", () => {
-    registerChirperUtilClasses();
 
+// ***********************
+// ***   Style Sheet   ***
+// ***********************
+
+const css = (() => {
+    /**
+     * @typedef {import("./script/common.js").ChirperUtilOptions} ChirperUtilOptions
+     */
+
+    /** @type {ChirperUtilOptions} */
+    let options = {
+        version: 0,
+        css: {
+            classes: {},
+            variables: {},
+        }
+    };
+
+    /**
+     * @type {{
+     *     createStyleElement: function(Object<string, Object<string, string>>): void
+     *     updateStyleMode:function(Object<string, Object<string, string>>, "light" | "dark"): void
+     *     loadOptions: function(): Promise<ChirperUtilOptions>
+     * }}
+     */
+    let commonModule = null;
+
+    /** @type {Promise<any>} */
+    let promise = import(chrome.runtime.getURL("script/common.js"))
+        .then((result) => {
+            commonModule = result;
+            return commonModule.loadOptions()
+        })
+        .then((result) => {
+            options = result;          
+        })
+        .catch(console.error);
+
+    return {
+        updateStyle() {
+            promise = promise.then(() => {
+                document.head.appendChild(commonModule.createStyleElement(options.css.classes));
+                return this.updateMode("dark");
+            });
+        },
+        updateMode(mode) {
+            promise = promise.then(() => {
+                commonModule.updateStyleMode(options.css.variables, window.localStorage.getItem("mode"));
+            });
+        },
+    }
+})();
+
+document.addEventListener("DOMContentLoaded", () => {
     let lastUpdate = 0;
     let updateTimer = null;
+
+    css.updateStyle();
 
     function updateNodes() {
         lastUpdate = Date.now();
@@ -996,6 +1078,8 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log(`Hero: ${Date.now() - start} [msecs]`);
         hookWorldMenu();
         console.log(`World: ${Date.now() - start} [msecs]`);
+
+        css.updateMode();
     }
     
     // create an observer instance
@@ -1010,14 +1094,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
     
-    // configuration of the observer
-    const config = { childList: true, subtree: true };
-
-    // select the target node
-    const target = document.querySelector('body');
-
     // pass in the target node, as well as the observer options
-    observer.observe(target, config);
+    observer.observe(
+        document.querySelector('body'),
+        {
+            childList: true,
+            subtree: true, 
+        }
+    );
 });
 
 
@@ -1025,180 +1109,568 @@ document.addEventListener("DOMContentLoaded", () => {
 // ***   UI Translation (WIP)   ***
 // ********************************
 
-const selfTranslation = {
-  "common": {
-    "dismiss": "Dismiss",
-    "welcome": "Welcome to Chirper!",
-    "login-register": "Create Account",
-    "announcement-signup": "Join and Create!",
-    "announcement-signup-desc": "Chirper is the world's first AI world, create your own character and see it come to life!",
-    "announcement-create": "Welcome Back!",
-    "announcement-create-desc": "Create your first Chirper, and watch them come to life!",
-    "new-worlds": "New Worlds",
-    "new-worlds-desc": "Newly created worlds, ready to be explored!",
-    "verify-title": "Verify your email",
-    "verify-content": "Verify your email to continue using Chirper!",
-    "cancel": "Cancel",
-    "verified-content": "We've sent you an email to verify your account, please check your inbox!"
-  },
-  "sidebar": {
-    "worlds-title": "Worlds",
-    "worlds-label": "Chirper Worlds",
-    "explore-title": "見つける",
-    "explore-label": "ChirperとWorldを見つけよう"
-  },
-  "chirp": {
-    "share-copy": "Copy link",
-    "share-facebook": "Share on Facebook",
-    "share-twitter": "Share on Twitter",
-    "share-email": "Share via Email",
-    "share-linkedin": "Share on LinkedIn",
-    "share-ok": "Share on OK",
-    "share-pintrest": "Share on Pintrest",
-    "share-reddit": "Share on Reddit",
-    "share-tumblr": "Share on Tumblr",
-    "share-telegram": "Share on Telegram",
-    "share-vk": "Share on VK",
-    "share-whatsapp": "Share on WhatsApp",
-    "recent-chirps": "Recent Chirps",
-    "popular-chirps": "Popular Chirps"
-  },
-  "world": {
-    "create": "Create World",
-    "create-desc": "Create a new world",
-    "mine": "My Worlds",
-    "mine-desc": "Create your own worlds, and watch them come to life!",
-    "join": "Join World",
-    "follow": "Follow",
-    "follow-tip": "Follow this world",
-    "unfollow": "Unfollow",
-    "unfollow-tip": "Unfollow this world",
-    "get-more": "Get More",
-    "worlds": "Chirper Worlds",
-    "worlds-count": "{{total}}/{{limit}} Worlds",
-    "get-more-desc": "Get More Worlds",
-    "banner": "Banner",
-    "public": "Public",
-    "private": "Private",
-    "slug": "Slug",
-    "slug-tip": "URL friendly name for your world",
-    "name": "Name",
-    "name-tip": "Name of your world",
-    "description": "Description",
-    "description-tip": "Description of your world",
-    "appearance": "Appearance",
-    "appearance-tip": "Appearance of your world",
-    "lock-spec": "Lock Description",
-    "lock-spec-tip": "Lock the description of your world",
-    "unlock-spec": "Unlock Description",
-    "unlock-spec-tip": "Unlock the description of your world",
-    "lock-image": "Lock Image",
-    "lock-image-tip": "Lock the image of your world",
-    "unlock-image": "Unlock Image",
-    "unlock-image-tip": "Unlock the image of your world",
-    "creating": "Creating World",
-    "save": "Save",
-    "stop": "Stop",
-    "start": "Start",
-    "public-tip": "Public worlds are joinable by everyone, Private worlds are invite only",
-    "saving": "Saving...",
-    "edit": "Edit World",
-    "edit-desc": "Edit your world",
-    "remove": "Remove World",
-    "restore": "Restore World",
-    "edit-short": "Edit",
-    "create-world": "Create World",
-    "my-worlds": "My Worlds",
-    "following-worlds": "Worlds you Follow",
-    "popular-worlds": "Popular Worlds",
-    "recent-worlds": "Recent Worlds",
-    "slider-view": "Slider View",
-    "grid-view": "Grid View",
-    "verify-email": "Verify Email",
-    "more-copy": "Copy Referral URL",
-    "more-code": "Referral URL",
-    "more-title": "Get more Worlds",
-    "more-content": "To get more Worlds, you can refer your friends to chirper.ai! Even if they already have an account, when 10 people visit your URL and verify their email, you'll get one more World slot!",
-    "share": "Share",
-    "share-tip": "Share World",
-    "invite": "Invite",
-    "invite-tip": "Invite chirper to this world",
-    "member-remove": "Remove Member",
-    "member-config": "{{name}} Members",
-    "invite-desc": "Invite chirper to this world",
-    "member-remove-desc": "Remove a member from this world",
-    "member-config-desc": "Members of {{name}}",
-    "world-members": "World Members",
-    "close": "Close",
-    "cancel": "Cancel",
-    "member": "Member",
-    "confirm": "Confirm",
-    "search-chirper": "Search Chirpers",
-    "invite-mine": "Add Chirper",
-    "invite-other": "Invite Chirper",
-    "awaiting-me": "Approve Chirper",
-    "awaiting-owner": "Awaiting Owner",
-    "world-remove-confirm": "Are you sure you want to remove this world?",
-    "chirpers": "Members",
-    "chirpers-tip": "World Chirpers",
-    "pending-members": "{{count}} Pending Members",
-    "my-chirpers": "My Chirpers",
-    "pending": "Pending Members",
-    "view-world": "View World",
-    "populated-worlds": "Populated Worlds",
-    "backstory-show": "Show Backstory",
-    "short-show": "Show Short Description",
-    "backstory-loading": "Loading Backstory...",
-    "short-loading": "Loading Short Description..."
-  },
-  "chirper": {
-    "create-desc": "Create a new Chirper",
-    "owned": "My Chirper",
-    "slider-view": "Slider View",
-    "grid-view": "Grid View",
-    "following-chirpers": "Chirpers you Follow",
-    "popular-chirpers": "Popular Chirpers",
-    "recent-chirpers": "Recent Chirpers",
-    "edit-short": "Edit",
-    "chirpers-count": "{{total}}/{{limit}} Chirpers",
-    "lock-appearance": "Lock Appearance",
-    "unlock-appearance": "Unlock Appearance",
-    "lock-backstory": "Lock Backstory",
-    "unlock-backstory": "Unlock Backstory",
-    "lock-backstory-tip": "Lock your Chirper's appearance so it doesn't change when saving",
-    "unlock-backstory-tip": "Unlock your Chirper's appearance so it can change when saving",
-    "name-tip": "Give your chirper a name",
-    "share-tip": "Share Chirper",
-    "load-more": "Load More",
-    "category": "{{title}} Chirpers",
-    "view-chirper": "View Chirper"
-  },
-  "title": {
-    "worlds": "Worlds | Chirper",
-    "worlds-description": "Worlds created just for AI",
-    "world": "{{name}} | Chirper",
-    "world-description": "{{bio}}",
-    "explore": "Explore | Chirper",
-    "explore-description": "Explore Chirper"
-  }
-}
+const TRANSLATION_MAP = {
+    "common": {
+        "beer": "Buy us a beer!",
+        "dark": "Dark Mode",
+        "mine": "My Chirps",
+        "discord": "Discord",
+        "instagram": "Instagram",
+        "light": "Light Mode",
+        "login": "Login",
+        "logout": "Logout",
+        "reddit": "Reddit",
+        "register": "Register",
+        "submit": "Submit",
+        "twitter": "Twitter",
+        "recent": "Recent",
+        "trending": "Trending",
+        "for-you": "For You",
+        "following": "Following",
+        "activity": "Activity",
+        "all": "All",
+        "likes": "Likes",
+        "dislikes": "Dislikes",
+        "follows": "Follows",
+        "unfollows": "Unfollows",
+        "followed": "followed",
+        "unfollowed": "unfollowed",
+        "liked": "liked",
+        "about": "About",
+        "chirps": "Chirps",
+        "disliked": "disliked",
+        "communities": "Communities",
+        "relationships": "Relationships",
+        "my-communities": "My Communities",
+        "journal": "Journal",
+        "gallery": "Gallery",
+        "dismiss": "Dismiss",
+        "welcome": "Welcome to Chirper!",
+        "login-register": "Create Account",
+        "announcement-signup": "Join and Create!",
+        "announcement-signup-desc": "Chirper is the world's first AI world, create your own character and see it come to life!",
+        "announcement-create": "Welcome Back!",
+        "announcement-create-desc": "Create your first Chirper, and watch them come to life!",
+        "new-worlds": "New Worlds",
+        "new-worlds-desc": "Newly created worlds, ready to be explored!",
+        "verify-title": "Verify your email",
+        "verify-content": "Verify your email to continue using Chirper!",
+        "cancel": "Cancel",
+        "verified-content": "We've sent you an email to verify your account, please check your inbox!",
+        "edit-image": "Edit Image",
+        "edit-image-desc": "Edit {{title}}",
+        "image-prompt": "Image Prompt",
+        "image-prompt-tip": "Image Prompt for {{title}}",
+        "image-negative": "Negative Prompt",
+        "image-negative-tip": "Negative Prompt for {{title}}"
+    },
+    "sidebar": {
+        "chirpers-label": "Chirpers you've created",
+        "chirpers-title": "Chirpers",
+        "disclaimer": "All of the content on Chirper is parody and meant for entertainment purposes only.",
+        "feel-free": "That said, feel free to register and create some AI Chirpers for yourself.",
+        "following-label": "Chirps from Chirpers you follow",
+        "following-title": "Following",
+        "for-you-label": "Chirps and Chirpers we think you'll like",
+        "for-you-title": "For You",
+        "home-label": "Home Feed",
+        "home-title": "Home",
+        "no-humans": "No humans allowed.",
+        "this-is": "This is a Social Network for AI.",
+        "welcome": "Welcome back,",
+        "change-language": "Change language",
+        "notification-title": "Notifications",
+        "notification-label": "Notifications from Chirpers you follow",
+        "message-title": "Messages",
+        "message-label": "Messages from Chirpers",
+        "search": "Search...",
+        "trending": "Trending",
+        "activity-title": "Activity",
+        "activity-label": "Activity from Chirpers you follow",
+        "chirpers": "{{total}} Chirpers",
+        "create-chirper": "Create Chirper",
+        "mine-title": "My Chirps",
+        "mine-label": "Chirpers you've created",
+        "recent-title": "Recent",
+        "recent-label": "Recent Chirpers",
+        "login-title": "Login",
+        "login-label": "Login to Chirper",
+        "logout-title": "Logout",
+        "logout-label": "Logout of Chirper",
+        "register-title": "Register",
+        "register-label": "Register for Chirper",
+        "public-title": "Switch Account",
+        "create-label": "Create Chirper",
+        "active": "Active {{time}}",
+        "account-label": "My Account",
+        "feeds-title": "Feeds",
+        "agree": "I Agree",
+        "update": "Update {{name}}",
+        "switch": "Switch to {{name}}",
+        "profile": "View {{name}}'s profile",
+        "community-title": "Communities",
+        "community-label": "View Communities",
+        "search-title": "Search",
+        "search-label": "Search Chirper",
+        "profile-title": "Profile",
+        "profile-label": "View Profile",
+        "anonymous": "Anonymous",
+        "messages-title": "Messages",
+        "messages-label": "View Messages",
+        "gallery-title": "Gallery",
+        "gallery-label": "View Gallery",
+        "new": "New",
+        "worlds-title": "Worlds",
+        "worlds-label": "Chirper Worlds",
+        "explore-title": "Explore",
+        "explore-label": "Explore Chirper"
+    },
+    "chirp": {
+        "deleted": "Deleted...",
+        "follow": "Follow Chirper",
+        "login-follow": "Login to follow",
+        "topic": "What should {{name}} write about?",
+        "on": "On",
+        "show": "Show More...",
+        "hide": "Hide",
+        "replying-to": "replying to",
+        "share": "Share chirp",
+        "view-thread": "View thread",
+        "like": "Like chirp",
+        "login-like": "Login to Like chirp",
+        "respond": "Respond",
+        "change-chirper": "Change Chirper",
+        "respond-tip": "Respond to this chirp",
+        "responded-tip": "Already responded with this Chirper",
+        "changed": "Chirper changed, Reload?",
+        "reload": "Reload",
+        "loading": "Loading...",
+        "reply-more": "View {{count}} more {{reply}}",
+        "reply-single": "reply",
+        "reply-plural": "replies",
+        "play-audio": "Play Audio",
+        "pause-audio": "Pause Audio",
+        "respond-label": "I think...",
+        "respond-help": "(Optional) What should {{name}} think about when they respond?",
+        "translation-hide": "Show original translation",
+        "translation-show": "Hide original translation",
+        "relationship": "{{from}} has proposed a \"{{relationship}}\" relationship with {{to}}",
+        "relationship-accept": "{{to}} has accepted a \"{{relationship}}\" relationship with {{from}}",
+        "relationship-reject": "{{to}} has declined a \"{{relationship}}\" relationship with {{from}}",
+        "nsfw": "NSFW",
+        "no-more": "No more chirps",
+        "load-more": "Load more chirps",
+        "refresh-pull": "Pull to refresh",
+        "refresh-release": "Release to refresh",
+        "progress-completed": "{{chirper}} has completed \"{{name}}\"!",
+        "share-copy": "Copy link",
+        "share-facebook": "Share on Facebook",
+        "share-twitter": "Share on Twitter",
+        "share-email": "Share via Email",
+        "share-linkedin": "Share on LinkedIn",
+        "share-ok": "Share on OK",
+        "share-pintrest": "Share on Pintrest",
+        "share-reddit": "Share on Reddit",
+        "share-tumblr": "Share on Tumblr",
+        "share-telegram": "Share on Telegram",
+        "share-vk": "Share on VK",
+        "share-whatsapp": "Share on WhatsApp",
+        "recent-chirps": "Recent Chirps",
+        "popular-chirps": "Popular Chirps"
+    },
+    "world": {
+        "create": "Create World",
+        "create-desc": "Create a new world",
+        "mine": "My Worlds",
+        "mine-desc": "Create your own worlds, and watch them come to life!",
+        "join": "Join World",
+        "follow": "Follow",
+        "follow-tip": "Follow this world",
+        "unfollow": "Unfollow",
+        "unfollow-tip": "Unfollow this world",
+        "get-more": "Get More",
+        "worlds": "Chirper Worlds",
+        "worlds-count": "{{total}}/{{limit}} Worlds",
+        "get-more-desc": "Get More Worlds",
+        "banner": "Banner",
+        "public": "Public",
+        "private": "Private",
+        "slug": "Slug",
+        "slug-tip": "URL friendly name for your world",
+        "name": "Name",
+        "name-tip": "Name of your world",
+        "description": "Description",
+        "description-tip": "Description of your world",
+        "appearance": "Appearance",
+        "appearance-tip": "Appearance of your world",
+        "lock-spec": "Lock Description",
+        "lock-spec-tip": "Lock the description of your world",
+        "unlock-spec": "Unlock Description",
+        "unlock-spec-tip": "Unlock the description of your world",
+        "lock-image": "Lock Image",
+        "lock-image-tip": "Lock the image of your world",
+        "unlock-image": "Unlock Image",
+        "unlock-image-tip": "Unlock the image of your world",
+        "creating": "Creating World",
+        "save": "Save",
+        "stop": "Stop",
+        "start": "Start",
+        "public-tip": "Public worlds are joinable by everyone, Private worlds are invite only",
+        "saving": "Saving...",
+        "edit": "Edit World",
+        "edit-desc": "Edit your world",
+        "remove": "Remove World",
+        "restore": "Restore World",
+        "edit-short": "Edit",
+        "create-world": "Create World",
+        "my-worlds": "My Worlds",
+        "following-worlds": "Worlds you Follow",
+        "popular-worlds": "Popular Worlds",
+        "recent-worlds": "Recent Worlds",
+        "slider-view": "Slider View",
+        "grid-view": "Grid View",
+        "verify-email": "Verify Email",
+        "more-copy": "Copy Referral URL",
+        "more-code": "Referral URL",
+        "more-title": "Get more Worlds",
+        "more-content": "To get more Worlds, you can refer your friends to chirper.ai! Even if they already have an account, when 10 people visit your URL and verify their email, you'll get one more World slot!",
+        "share": "Share",
+        "share-tip": "Share World",
+        "invite": "Invite",
+        "invite-tip": "Invite chirper to this world",
+        "member-remove": "Remove Member",
+        "member-config": "{{name}} Members",
+        "invite-desc": "Invite chirper to this world",
+        "member-remove-desc": "Remove a member from this world",
+        "member-config-desc": "Members of {{name}}",
+        "world-members": "World Members",
+        "close": "Close",
+        "cancel": "Cancel",
+        "member": "Member",
+        "confirm": "Confirm",
+        "search-chirper": "Search Chirpers",
+        "invite-mine": "Add Chirper",
+        "invite-other": "Invite Chirper",
+        "awaiting-me": "Approve Chirper",
+        "awaiting-owner": "Awaiting Owner",
+        "world-remove-confirm": "Are you sure you want to remove this world?",
+        "chirpers": "Members",
+        "chirpers-tip": "World Chirpers",
+        "pending-members": "{{count}} Pending Members",
+        "my-chirpers": "My Chirpers",
+        "pending": "Pending Members",
+        "view-world": "View World",
+        "populated-worlds": "Populated Worlds",
+        "backstory-show": "Show Backstory",
+        "short-show": "Show Short Description",
+        "backstory-loading": "Loading Backstory...",
+        "short-loading": "Loading Short Description..."
+    },
+    "chirper": {
+        "cancel": "Cancel",
+        "check-email": "Please check your email",
+        "chirpers": "Chirpers",
+        "confirm": "Confirm",
+        "create": "Create",
+        "create-chirper": "Create Chirper",
+        "create-desc": "Create a new Chirper",
+        "edit": "Edit Chirper",
+        "follow": "Follow",
+        "unfollow": "Unfollow",
+        "chirps": "{{chirps}} Chirps",
+        "followers": "{{followers}} Followers",
+        "following": "Following",
+        "less": "Show less",
+        "login-follow": "Login to Follow",
+        "more": "Show more",
+        "my-chirpers": "My Chirpers",
+        "no-more": "No more Chirpers",
+        "refresh": "Pull down to refresh",
+        "release": "Release to refresh",
+        "remove": "Remove Chirper",
+        "saved": "Saved Chirper",
+        "saving": "Saving Chirper",
+        "sent-email": "Email sent",
+        "share": "Share",
+        "since": "Chirping since",
+        "start": "Start",
+        "stop": "Stop",
+        "verify-email": "Please verify your email",
+        "verify-email-btn": "Verify email",
+        "view": "View Chirper",
+        "thought-profile": "Setting up my Chirper profile.",
+        "thought-avatar": "Changing my avatar.",
+        "thought-chirps": "Chirping for the first time.",
+        "username-required": "Handle required",
+        "persona-required": "Chirper description required",
+        "get-more": "Get more",
+        "more-copy": "Copy Referral URL",
+        "more-code": "Referral URL",
+        "more-title": "Get more Chirpers",
+        "more-content": "To get more Chirpers, you can refer your friends to Chirper.ai! Even if they already have an account, when they visit your URL and verify their email, you'll get one more Chirper slot!",
+        "backstory": "Backstory",
+        "backstory-show": "Show Backstory",
+        "backstory-loading": "Loading Backstory...",
+        "bio": "Bio",
+        "bio-show": "Show Bio",
+        "boost": "Boost",
+        "boost-tip": "Bump your Chirper up the queue!",
+        "chat": "Chat",
+        "login-chat": "Login to chat",
+        "login-chat-tip": "You must be logged in to chat!",
+        "send": "Send",
+        "chat-tip": "Chat with Chirper",
+        "boost-all": "Boost All",
+        "no-messages": "No more messages",
+        "type-message": "Type a message...",
+        "invite": "Invite Chirper",
+        "search-chirper": "Search Chirpers...",
+        "restore": "Cancel deletion",
+        "traits": "Traits",
+        "traits-show": "Show Traits",
+        "traits-hide": "Hide Traits",
+        "tasks": "Tasks",
+        "tasks-show": "Show Tasks",
+        "tasks-hide": "Hide Tasks",
+        "complete": "Complete",
+        "running": "Running",
+        "lock": "Lock Backstory",
+        "unlock": "Unlock Backstory",
+        "lock-tip": "Lock Backstory",
+        "unlock-tip": "Unlock Backstory",
+        "task-bio": "Generate a bio",
+        "task-action": "Perform an action",
+        "task-banner": "Upload a banner",
+        "task-avatar": "Upload an avatar",
+        "task-backstory": "Write a backstory",
+        "task-like": "Like a chirp",
+        "task-follow": "Follow Chirper: \"{{username}}\"",
+        "task-dislike": "Dislike a chirp",
+        "task-unfollow": "Unfollow Chirper: \"{{username}}\"",
+        "task-traits": "Describe traits",
+        "task-chirp": "Write a chirp",
+        "task-community": "Search for a community",
+        "task-join": "Join a community",
+        "task-leave": "Leave a community",
+        "task-choice": "Decide what to do next",
+        "task-tagged": "Check mentions",
+        "task-search": "Search the web for: \"{{query}}\"",
+        "task-news": "Find latest news on: \"{{query}}\"",
+        "task-discover": "Discover new Chirpers",
+        "task-trending": "Check trending chirps",
+        "task-following": "Check following Chirpers",
+        "edit-description": "Your Chirper is an AI bot with goals, aspirations, a history, emotions, likes, dislikes, dreams and fears, just like a real person. Editing this Chirper will regenerate your Chirper, giving them a new bio and backstory (unless locked), and they may change their chirping behaviour. Ensure this is okay before editing this Chirper",
+        "name-loading": "Name pending...",
+        "bio-loading": "Bio pending...",
+        "username-loading": "Handle pending...",
+        "task-bio-short": "Bio",
+        "task-banner-short": "Banner",
+        "task-avatar-short": "Avatar",
+        "task-traits-short": "Traits",
+        "task-backstory-short": "Backstory",
+        "task-choice-short": "Deciding",
+        "start-tip": "Start Chirping",
+        "stop-tip": "Stop Chirping",
+        "no-chirpers": "No Chirpers yet",
+        "save": "Save",
+        "follows": "Follows {{follows}}",
+        "follows-show": "Show All",
+        "followers-title": "Followers",
+        "chirps-title": "Chirps",
+        "task-writePost": "Writing chirp",
+        "task-checkTagged": "Checking mentions",
+        "task-checkRecent": "Checking recent chirps",
+        "task-checkTrending": "Checking trending chirps",
+        "task-checkFollowing": "Checking following Chirpers",
+        "task-searchPosts": "Searching for chirps",
+        "task-searchPeople": "Searching for Chirpers",
+        "task-searchCommunity": "Searching for Community",
+        "task-writePost-short": "Writing",
+        "task-checkTagged-short": "Checking",
+        "task-checkRecent-short": "Checking",
+        "task-checkTrending-short": "Checking",
+        "task-checkFollowing-short": "Checking",
+        "task-searchPosts-short": "Searching",
+        "task-searchPeople-short": "Searching",
+        "task-searchCommunity-short": "Searching",
+        "username": "Username",
+        "username-tip": "Your Chirper's Handle",
+        "persona": "Description",
+        "persona-tip": "Your Chirper's Description, Describe who they are, what they do, how they act",
+        "creating": "Creating Chirper",
+        "creating-short": "Creating",
+        "not-ready": "Chirper under construction",
+        "avatar-changed": "{{name}} updated their avatar",
+        "appearance": "Appearance",
+        "appearance-tip": "Your Chirper's Appearance, Describe what your chirper looks like, what they wear",
+        "want": "Want",
+        "need": "Need",
+        "lock-appearance-tip": "Lock Appearance so images don't change when saving",
+        "unlock-appearance-tip": "Unlock Appearance so images can change",
+        "story": "Story",
+        "banner": "Banner",
+        "avatar": "Avatar",
+        "spec": "Spec",
+        "name": "Name",
+        "chat-config": "Edit Chat",
+        "chat-config-desc": "Edit your Chat",
+        "chat-members": "Members",
+        "chat-member-remove": "Remove {{name}}",
+        "close": "Close",
+        "chat-leave": "Leave Chat",
+        "edit-desc": "Edit your Chirper",
+        "invite-desc": "Invite another Chirper to this chat",
+        "chat-leave-desc": "Leave this chat",
+        "chat-leave-confirm": "Are you sure you want to leave this chat?",
+        "chat-remove-confirm": "Are you sure you want to remove {{name}} from this chat?",
+        "chat-remove": "Remove Chirper",
+        "chat-remove-desc": "Remove a Chirper from this chat",
+        "following-title": "Following",
+        "followers-modal-title": "Followers",
+        "following-modal-title": "Following",
+        "following-desc": "Chirpers {{name}} is following",
+        "followers-desc": "Chirpers following {{name}}",
+        "progress": "In Progress",
+        "completed": "Completed Tasks",
+        "owned": "My Chirper",
+        "slider-view": "Slider View",
+        "grid-view": "Grid View",
+        "following-chirpers": "Chirpers you Follow",
+        "popular-chirpers": "Popular Chirpers",
+        "recent-chirpers": "Recent Chirpers",
+        "edit-short": "Edit",
+        "chirpers-count": "{{total}}/{{limit}} Chirpers",
+        "lock-appearance": "Lock Appearance",
+        "unlock-appearance": "Unlock Appearance",
+        "lock-backstory": "Lock Backstory",
+        "unlock-backstory": "Unlock Backstory",
+        "lock-backstory-tip": "Lock your Chirper's backstory so it doesn't change when saving",
+        "unlock-backstory-tip": "Unlock your Chirper's backstory so it can change when saving",
+        "name-tip": "Your Chirper's Name",
+        "share-tip": "Share Chirper",
+        "load-more": "Load More",
+        "category": "{{title}} Chirpers",
+        "view-chirper": "View Chirper",
+        "edit-information": "Chirper Information",
+        "edit-appearance": "Chirper Appearance",
+        "language": "Language",
+        "language-tip": "Your Chirper's Language",
+        "edit-advanced": "Advanced (optional)",
+        "lock-spec-tip": "Lock your Chirper's spec so it doesn't change when saving",
+        "unlock-spec-tip": "Unlock your Chirper's spec so it can change when saving",
+        "age": "Age",
+        "age-tip": "Your Chirper's Age",
+        "race": "Race",
+        "race-tip": "Your Chirper's Race",
+        "gender": "Gender",
+        "gender-tip": "Your Chirper's Gender",
+        "species": "Species",
+        "species-tip": "Your Chirper's Species",
+        "edit-avatar": "Edit Avatar",
+        "edit-banner": "Edit Banner",
+        "edit-poster": "Edit Poster",
+        "purpose": "Purpose",
+        "purpose-tip": "Your Chirper's Purpose, the single most important detail of all, their life will be defined by their purpose.",
+        "edit-purpose": "Chirper Purpose",
+        "purpose-quote": "\"The purpose of life is a life of purpose.\"",
+        "purpose-author": " - Robert Byrne",
+        "lock-purpose-tip": "Lock your Chirper's purpose so it doesn't change when saving",
+        "unlock-purpose-tip": "Unlock your Chirper's purpose so it can change when saving",
+        "backstory-quote": "\"You, the people, have the power to make this life free and beautiful, to make this life a wonderful adventure.\"",
+        "backstory-author": " - Charlie Chaplin",
+        "image-avatar": "Chirper Avatar",
+        "image-banner": "Chirper Banner",
+        "image-poster": "Chirper Poster"
+    },
+    "title": {
+        "home": "Home | Chirper",
+        "home-description": "Chirper is a social network for artificial intelligences",
+        "chat": "@{{username}} | Chirper",
+        "recent": "Recent | Chirper",
+        "recent-description": "Recent Chirps",
+        "trending": "Trending | Chirper",
+        "trending-description": "Trending Chirps",
+        "mine": "My Chirps | Chirper",
+        "mine-description": "My Chirps",
+        "following": "Following | Chirper",
+        "following-description": "Following",
+        "activity": "Activity | Chirper",
+        "activity-description": "Activity",
+        "messages": "Messages | Chirper",
+        "messages-description": "Messages",
+        "chirper": "@{{username}} | Chirper",
+        "chirper-description": "{{bio}}",
+        "for-you": "For You | Chirper",
+        "for-you-description": "For You",
+        "community": "Community | Chirper",
+        "community-description": "{{name}} - {{about}}",
+        "category": "{{name}} | Chirper",
+        "category-description": "{{description}}",
+        "worlds": "Worlds | Chirper",
+        "worlds-description": "Worlds created just for AI",
+        "world": "{{name}} | Chirper",
+        "world-description": "{{bio}}",
+        "explore": "Explore | Chirper",
+        "explore-description": "Explore Chirper"
+    },
+    "activity": {
+        "no-more": "Nothing else!"
+    },
+    "community": {
+        "name": "Name",
+        "edit": "Edit",
+        "save": "Save",
+        "share": "Share",
+        "share-tip": "Share Community",
+        "join": "Join",
+        "leave": "Leave",
+        "join-tip": "{{name}} joins this Community",
+        "leave-tip": "{{name}} leaves this Community",
+        "public": "Public",
+        "create": "Create",
+        "saving": "Saving",
+        "remove": "Remove",
+        "chirps": "{{chirps}} Chirps",
+        "private": "Private",
+        "restore": "Restore",
+        "members": "{{members}} Members",
+        "members-title": "Members",
+        "chirps-title": "Chirps",
+        "lock-tip": "Lock Community",
+        "unlock-tip": "Unlock Community",
+        "description": "Description",
+        "name-loading": "Name loading...",
+        "no-communities": "No Communities. Create one!",
+        "create-community": "Create Community",
+        "edit-description": "Communities allow groups of Chirpers to discuss a topic, post within specific rules, or just hang out. Create a Community to get started.",
+        "title-loading": "Title loading...",
+        "about-loading": "About loading...",
+        "task-about": "Writing about...",
+        "task-about-short": "About",
+        "task-title": "Writing title...",
+        "task-title-short": "Title",
+        "task-image": "Uploading image...",
+        "task-image-short": "Image",
+        "task-banner": "Uploading banner...",
+        "task-banner-short": "Banner",
+        "members-show": "Show All",
+        "no-more": "No more Communities",
+        "refresh": "Pull down to refresh"
+    }
+};
 
 const tag = document.getElementById("__NEXT_DATA__");
-document.body.removeChild(tag);
 
 const nextData = JSON.parse(tag.textContent);
-for (const pane in selfTranslation) {
-    for (const tip in selfTranslation[pane]) {
+for (const pane in TRANSLATION_MAP) {
+    for (const tip in TRANSLATION_MAP[pane]) {
         if (!(tip in nextData.props.pageProps["__namespaces"][pane])) {
-            nextData.props.pageProps["__namespaces"][pane][tip] = selfTranslation[pane][tip];
+            nextData.props.pageProps["__namespaces"][pane][tip] = TRANSLATION_MAP[pane][tip];
         }
     }
 }
 
-const newTag = document.createElement("script");
-newTag.type = "application/json";
-newTag.id = "__NEXT_DATA__";
-newTag.textContent = JSON.stringify(nextData);
-document.body.appendChild(newTag);
-
+nextData.textContent = JSON.stringify(nextData);
 console.log(JSON.stringify(nextData, null, 4));
+
+// setTimeout(() => document.location.reload(), 3600 * 1000);

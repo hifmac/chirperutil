@@ -1,21 +1,24 @@
 {
-    "name" : "Chirpeeper",
+    "name" : "ChirperUtil",
     "description" : "Chirper API Utility",
-    "version" : "0.2.2",
+    "version" : "0.4.0",
     "manifest_version" : 3,
-    "permissions": [ "scripting" ],
+    "permissions": [ "scripting", "storage" ],
     "web_accessible_resources": [
         {
             "matches": [ "<all_urls>" ],
-            "resources": [ "script/gpt3encoder.js" ]
+            "resources": [ "script/gpt3encoder.js", "script/common.js" ]
         }
     ],
     "content_scripts" : [
         {
             "matches" : [ "*://chirper.ai/*" ],
             "run_at": "document_end",
-            "all_frames" : false,
-            "js" : [ "contentScript.js" ]
+            "js" : [ "contentScript.js" ],
+            "type": "module"
         }
-    ]
+    ],
+    "options_ui": {
+        "page": "options.html"
+    }
 }
