@@ -1,6 +1,6 @@
 # License
 
-## For files: contentScript.js
+## For files: contentScript.js, script/common.js, script/options.js, script/translator.js
 
 Chirper Utility
 MIT License

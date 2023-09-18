@@ -1,13 +1,17 @@
 {
     "name" : "ChirperUtil",
     "description" : "Chirper API Utility",
-    "version" : "0.4.0",
+    "version" : "0.4.1",
     "manifest_version" : 3,
     "permissions": [ "scripting", "storage" ],
     "web_accessible_resources": [
         {
             "matches": [ "<all_urls>" ],
-            "resources": [ "script/gpt3encoder.js", "script/common.js" ]
+            "resources": [
+                "script/gpt3encoder.js",
+                "script/common.js",
+                "script/translator.js"
+            ]
         }
     ],
     "content_scripts" : [
