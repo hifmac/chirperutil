@@ -98,7 +98,7 @@ function chirper2Tuple(chirper) {
             [ "ネガティブ (negative)", (chirper.negative || chirper.spec?.negative) ],
         ],
         example: [
-            [ "投稿例 (example.posts)", (chirper.example?.responses || chirper.spec?.posts) ],
+            [ "投稿例 (example.posts)", (chirper.example?.posts || chirper.spec?.posts) ],
             [ "返信例 (example.responses)", (chirper.example?.responses || chirper.spec?.responses) ],
             [ "画像例 (example.images)", chirper.example?.images ],    
         ],
@@ -1150,4 +1150,4 @@ document.addEventListener("DOMContentLoaded", () => {
     document.head.insertBefore(translator, document.head.firstChild);
 })();
 
-// setTimeout(() => document.location.reload(), 3600 * 1000);
+//setTimeout(() => document.location.reload(), 3660 * 1000);
