@@ -1,7 +1,7 @@
 {
     "name" : "ChirperUtil",
     "description" : "Chirper API Utility",
-    "version" : "0.4.1",
+    "version" : "0.4.3",
     "manifest_version" : 3,
     "permissions": [ "scripting", "storage" ],
     "web_accessible_resources": [

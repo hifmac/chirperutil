@@ -149,7 +149,8 @@ function world2Tuple(world) {
                 ]
             ],
             [ "Chirper数 (world.chirpers)", world.chirpers ],
-            [ "Chirp数 (world.chirps)", world.chirps ],    
+            [ "Chirp数 (world.chirps)", world.chirps ],
+            [ "Azgaar's Fantasy Map Generator", `https://azgaar.github.io/Fantasy-Map-Generator/?maplink=https://cdn.chirper.ai/${world?.mapFile?.url}` ],
         ],
         information: [
             [ "@ID", world.slug ],
@@ -170,6 +171,9 @@ function world2Tuple(world) {
             [ "ネガティブ (world.spec.negative)", world.spec?.negative ],
             [ "年代 (world.spec.year)", world.spec?.year ],
             [ "スタイル (world.spec.style)", world.spec?.style ],    
+            [ "国家 (world.spec.countries)", world.spec?.countries ],
+            [ "宗教 (world.spec.religions)", world.spec?.religions ],
+            [ "地域 (world.spec.regions)", world.spec?.regions ],
         ],
     };
 }
@@ -316,11 +320,26 @@ function addChirperParameter(panelElement, parameter, parmeterId) {
                 const textList = (Array.isArray(parameter[1])
                     ? parameter[1].map((value, index) => `${index + 1}: ${value}`) 
                     : `${parameter[1]}`.trim().split("\n"));
+
                 for (const text of textList) {
+
                     if (paragraph.firstChild) {
                         paragraph.append(document.createElement("br"));
                     }
-                    paragraph.append(document.createTextNode(text));
+
+                    if (text.startsWith("http")) {
+                        const anchor = document.createElement("a")
+                        anchor.href = text;
+                        anchor.target = "_blank";
+                        anchor.textContent = "リンク";
+                        anchor.addEventListener("click", (ev) => {
+                            ev.stopPropagation();
+                        }, true);
+                        paragraph.append(anchor);
+                    }
+                    else {
+                        paragraph.append(document.createTextNode(text));
+                    }
                 }            
             }));
         }));
